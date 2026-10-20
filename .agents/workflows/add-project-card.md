@@ -1,5 +1,5 @@
 ---
-description: Add the fifth project card (Inventory Optimization & Replenishment Engine) with a real dashboard screenshot, matching the existing four cards.
+description: Add the fifth project (Inventory Optimization & Replenishment Engine) with a real dashboard screenshot, matching the existing four.
 ---
 
 # /add-project-card
@@ -7,11 +7,11 @@ description: Add the fifth project card (Inventory Optimization & Replenishment 
 > **Status (October 2026): done.**
 > - The Inventory Optimization & Replenishment Engine card is live, directly after the S&OP card.
 > - Its screenshot is at `assets/images/project-inventory-640.webp` and `-1200.webp`.
-> - The odd-count CSS from step 4 is in place.
+> - Since the second design round, projects are full-width showcase rows that alternate sides, so any number of projects lays out correctly. The odd-count CSS this workflow once added has been removed.
 >
-> Keep this workflow as the template for any future card: replace the facts in step 1 and the image names, and re-check the odd/even layout in step 4.
+> Keep this workflow as the template for any future project: replace the facts in step 1 and the image names.
 
-Goal: add a card for `https://github.com/kushagrakartikey-dev/inventory-optimization-engine` to the Projects section, consistent with the four existing cards. Follow `.agents/rules/` throughout. Do **not** add `nutricircle-sop-intelligence`.
+Goal: add a project for `https://github.com/kushagrakartikey-dev/inventory-optimization-engine` to the Projects section, consistent with the four existing projects. Follow `.agents/rules/` throughout. Do **not** add `nutricircle-sop-intelligence`.
 
 ## 1. Confirm the facts
 
@@ -47,44 +47,29 @@ Use only the figures above for the card. The README also has modelled results (f
 
    With Python and Pillow you can resize, then save with `save(path, 'WEBP', quality=80, method=6)`.
 
-## 3. Add the card
+## 3. Add the project
 
-1. In `index.html`, copy the S&OP card's `<li class="project reveal" data-tilt>` block.
-2. Insert the copy directly **after** the S&OP card. The planning-to-inventory order reads logically.
-3. Update the copy's metric, title, problem, description and tags. Keep `<p class="visually-hidden">Built with</p>` before the tags list.
-4. Update both links, including the visually hidden suffix "for Inventory Optimization & Replenishment Engine (opens in a new tab)".
-5. Point `src`/`srcset` at the new images. Keep `width="1200" height="750" loading="lazy" decoding="async"`.
-6. Write alt text such as "Inventory Optimization & Replenishment Engine dashboard showing inventory KPIs and charts". Describe what the screenshot actually shows.
-7. Change the Projects intro from "Four end-to-end analytics builds" to "Five end-to-end analytics builds".
+1. In `index.html`, copy the S&OP project's `<li class="project reveal">` block, from its `<!-- 1. S&OP -->` comment down to its closing `</li>`.
+2. Insert the copy directly **after** the S&OP project, and renumber the comments. The planning-to-inventory order reads logically.
+3. In the browser frame (`.project__window`), set the address bar `.project__url` to the live dashboard's address without `https://` or the closing slash: `kushagrakartikey-dev.github.io/inventory-optimization-engine`. Keep `data-spin data-ui` on the frame and `aria-hidden="true"` on `.project__chrome`.
+4. Update the copy's metric chip, title, one-line description and tags. The description is one sentence of about 20 words that names what the build does (the problem stays in the README, not on the card). Keep `<p class="visually-hidden">Built with</p>` before the tags list.
+5. Update both buttons: **Live dashboard** (`btn btn--accent btn--small`, arrow icon after the text) and **Repository** (`btn btn--ghost btn--small`, GitHub icon before the text). Update each one's visually hidden suffix, "for Inventory Optimization & Replenishment Engine (opens in a new tab)".
+6. Point `src`/`srcset` at the new images. Keep `sizes="(min-width: 900px) 56vw, 92vw" width="1200" height="750" loading="lazy" decoding="async"`.
+7. Write alt text such as "Inventory Optimization & Replenishment Engine dashboard showing inventory KPIs and charts". Describe what the screenshot actually shows.
+8. Change the Projects intro from "Four end-to-end analytics builds" to "Five end-to-end analytics builds".
 
-## 4. Handle the odd card count
+## 4. Check the layout
 
-Five cards in a 2-column grid leave the last one alone. Add this to `styles.css` (section 10, Projects) so the last card spans the full width, with its image beside the text on desktop:
-
-```css
-@media (min-width: 900px) {
-  .projects > .project:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-    flex-direction: row;
-  }
-  .projects > .project:last-child:nth-child(odd) .project__media {
-    flex: 0 0 55%;
-    aspect-ratio: auto;
-    border-bottom: 0;
-    border-right: 1px solid var(--line-light);
-  }
-}
-```
-
-Below 900px the grid is already one column, so no change is needed there.
+No CSS is needed. Rows alternate sides on their own: odd rows put the frame on the left and even rows on the right, and every row stacks below 900px. The address bar truncates with an ellipsis, so a long address cannot widen the page.
 
 ## 5. Verify (rule 03)
 
 Re-run the full test matrix at all seven widths. In particular, check:
 
 - the new image loads;
-- the wide last card has no overflow at 1024 and 1280;
+- the rows still alternate, with no horizontal scroll at 320, 1024 and 1280;
+- the address bar shows the right address;
 - both new links open the right pages;
-- the tilt still works on mouse hover.
+- the frame leans toward the mouse, spins when dragged and springs back.
 
 Then report what you checked and what you could not check.

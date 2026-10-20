@@ -23,7 +23,12 @@ Some CSS validators flag `clamp()` and `min()` as invalid. These are standard CS
 
 ## 3. Publish
 
-Ask the owner before pushing; this action is theirs to approve. Once they agree:
+Ask the owner before pushing; this action is theirs to approve.
+
+- **Commit authorship.** Every commit is authored and committed by the owner alone, Kushagra Kartikey: no `Co-Authored-By` lines and no tool or agent attributions, in commits or files.
+- **Updating the live site.** The site is already published from `kushagrakartikey-dev/Kushagra-Portfolio-Website` (GitHub Pages, `main`, `/ (root)`). Commit and push to `main`, wait for the "pages build and deployment" run to finish green, then continue at section 4, "Verify live".
+
+For a first publish, once the owner agrees:
 
 1. Create a public GitHub repository under `kushagrakartikey-dev`, or use one the owner names.
 2. Push the folder **contents** so that `index.html` sits at the repository root:
@@ -52,7 +57,7 @@ On the published URL:
 1. Repeat the desktop (1440) and mobile (390) checks.
 2. Click every external link once.
 3. Download the resume.
-4. Confirm the globe and the roadmap model load.
+4. Confirm the globe, the roadmap model and the container yard load, and that the three company logos show inside their tiles.
 
 ## 5. Optional, after the URL is final
 

@@ -1,10 +1,11 @@
 /* ==========================================================================
    Kushagra Kartikey — Portfolio
-   Plain CSS, no build step. Sections:
-   1. Font  2. Tokens  3. Base  4. Layout helpers  5. Navigation
-   6. Buttons  7. Hero + globe + ledger  8. About  9. Experience + roadmap
-   10. Projects  11. Skills  12. Strategy  13. Education  14. Contact
-   15. Footer  16. Motion  17. Responsive  18. Print
+   Plain CSS, no build step. One dark theme throughout. Sections:
+   1. Font  2. Tokens  3. Base  4. Layout helpers  5. Shared parts (icons, logos, chips, labels)
+   6. Navigation + progress line  7. Buttons  8. Hero + globe + floating windows + ledger
+   9. About  10. Experience + spine + metrics + roadmap  11. Projects showcase
+   12. Skills + yard  13. Strategy  14. Education  15. Contact  16. Footer
+   17. Motion  18. Responsive  19. Print
    ========================================================================== */
 
 /* 1. Font: Instrument Sans (SIL OFL), self-hosted, variable weight + width */
@@ -20,23 +21,23 @@
 
 /* 2. Design tokens */
 :root {
-  /* Colour */
-  --navy-950: #0A1524;
-  --navy-900: #0E1B2E;
-  --navy-800: #15263D;
-  --navy-700: #213650;
-  --paper: #F5F4F0;
-  --paper-2: #EBE9E3;
+  color-scheme: dark;
+
+  /* Colour: navy grounds from deepest to lightest, warm off-white text, one amber accent */
+  --navy-950: #0A1524;      /* page ground */
+  --navy-900: #0E1B2E;      /* panels and tiles */
+  --navy-800: #15263D;      /* tracks, chips, frame chrome */
+  --navy-700: #213650;      /* hover, empty gauge track */
   --white: #FFFFFF;
-  --ink: #0E1B2E;
-  --ink-soft: #3F4856;
-  --muted: #5A6371;
-  --on-dark: #F5F4F0;
-  --on-dark-soft: #B7C1CF;
+  --on-dark: #F5F4F0;       /* text: 16.7:1 on the ground */
+  --on-dark-soft: #B7C1CF;  /* secondary text: 10.1:1 */
+  --on-dark-muted: #97A3B4; /* notes and captions: 7.2:1, and 4.8:1 even on navy-700 */
   --accent: #E5A53A;
   --accent-strong: #F0B54E;
-  --line-light: rgba(14, 27, 46, 0.14);
+  --accent-line: rgba(229, 165, 58, 0.45);
   --line-dark: rgba(245, 244, 240, 0.16);
+  --line-soft: rgba(245, 244, 240, 0.09);
+  --brand-dhl: #FFCC00;     /* DHL's logo sits on DHL yellow, as on dhl.com */
 
   /* Type */
   --font: "Instrument Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -57,6 +58,8 @@
 
   /* Shape */
   --radius-card: 6px;
+  --radius-tile: 10px;
+  --radius-panel: 14px;
   --radius-pill: 999px;
 
   /* Motion */
@@ -76,6 +79,7 @@ html {
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   scroll-padding-top: calc(var(--nav-h) + 1rem);
+  background: var(--navy-950);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -84,8 +88,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--navy-950);
+  color: var(--on-dark);
   font-family: var(--font);
   font-size: var(--fs-body);
   line-height: 1.55;
@@ -104,13 +108,12 @@ button { font: inherit; color: inherit; }
 
 ::selection { background: var(--accent); color: var(--navy-900); }
 
-/* Focus: navy on light fields, amber on dark fields (both ≥3:1 against their ground) */
+/* Focus: amber on every ground (at least 7:1) */
 :focus-visible {
-  outline: 3px solid var(--focus, var(--navy-900));
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
   border-radius: 2px;
 }
-.field-dark, .site-header, .roadmap { --focus: var(--accent); }
 
 .visually-hidden {
   position: absolute !important;
@@ -147,10 +150,6 @@ button { font: inherit; color: inherit; }
 .section { padding-block: var(--section-space); scroll-margin-top: calc(1rem - var(--section-space)); }
 .section--tight-top { padding-top: 0; scroll-margin-top: 1rem; }
 
-.field-light { background: var(--paper); color: var(--ink); }
-.field-tone  { background: var(--paper-2); color: var(--ink); }
-.field-dark  { background: var(--navy-900); color: var(--on-dark); }
-
 .section-title {
   width: fit-content;
   max-width: 100%;
@@ -161,7 +160,7 @@ button { font: inherit; color: inherit; }
   letter-spacing: -0.03em;
 }
 
-.section-head { margin-bottom: clamp(3rem, 2rem + 3vw, 5rem); max-width: 46rem; }
+.section-head { margin-bottom: clamp(2.5rem, 2rem + 2.5vw, 4.5rem); max-width: 46rem; }
 .section-head .section-intro { margin-top: 1.5rem; }
 .section-head--split {
   max-width: none;
@@ -171,8 +170,7 @@ button { font: inherit; color: inherit; }
 }
 .section-head--split .section-intro { margin-top: 0; }
 
-.section-intro { font-size: var(--fs-lead); line-height: 1.5; color: var(--ink-soft); max-width: 40rem; }
-.field-dark .section-intro { color: var(--on-dark-soft); }
+.section-intro { font-size: var(--fs-lead); line-height: 1.5; color: var(--on-dark-soft); max-width: 40rem; }
 
 .statement {
   font-size: var(--fs-statement);
@@ -182,17 +180,81 @@ button { font: inherit; color: inherit; }
   max-width: 22em;
 }
 
-/* 5. Navigation */
+/* 5. Shared parts */
+
+/* Line icons from the sprite at the top of the page. A filled glyph marks its path .icon-fill. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.icon {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-fill { fill: currentColor; stroke: none; }
+
+/* Employer logos, unaltered, each on its own official ground: DHL on DHL yellow, the others on white */
+.logo-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8.5rem;
+  height: 3.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--white);
+  border-radius: var(--radius-tile);
+}
+/* Each logo keeps its own shape and shrinks to fit the tile, however wide or tall it is */
+.logo-tile img { width: auto; height: auto; max-width: 100%; max-height: 100%; }
+.logo-tile--dhl { background: var(--brand-dhl); }
+.logo-tile--tall { padding: 0.45rem; }
+.logo-tile--sm { width: 4.75rem; height: 1.9rem; padding: 0.35rem 0.55rem; border-radius: var(--radius-card); }
+
+/* Small group headings above lists and tiles */
+.label {
+  margin-bottom: 0.9rem;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--on-dark-muted);
+}
+.label--spaced { margin-top: clamp(2.25rem, 1.75rem + 1.5vw, 3.25rem); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.95rem 0.5rem 0.8rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+.chips .icon { width: 1.15rem; height: 1.15rem; color: var(--accent); }
+.chips--lg li { padding: 0.75rem 1.2rem 0.75rem 1rem; font-size: 1rem; }
+
+/* 6. Navigation */
 .site-header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--navy-900);
+  background: var(--navy-950);
   color: var(--on-dark);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur-ui) ease;
 }
-.site-header.is-scrolled { border-bottom-color: var(--line-dark); }
+.site-header.is-scrolled { border-bottom-color: var(--line-soft); }
+
+/* Reading progress: an amber line along the foot of the bar, scaled by script */
+.scroll-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none; }
+.scroll-progress__bar { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
+.no-js .scroll-progress { display: none; }
 
 .nav {
   display: flex;
@@ -264,11 +326,12 @@ button { font: inherit; color: inherit; }
 .site-header[data-menu="open"] .menu-toggle__icon span:first-child { transform: translateY(4px) rotate(45deg); }
 .site-header[data-menu="open"] .menu-toggle__icon span:last-child  { transform: translateY(-4px) rotate(-45deg); }
 
-/* 6. Buttons */
+/* 7. Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   min-height: 48px;
   padding: 0.8rem 1.4rem;
   border-radius: var(--radius-pill);
@@ -287,6 +350,7 @@ button { font: inherit; color: inherit; }
 }
 .btn:active { transform: scale(0.97); }
 .btn--small { min-height: 44px; padding: 0.6rem 1.1rem; font-size: 0.9375rem; }
+.btn .icon { width: 1.1em; height: 1.1em; }
 
 .btn--accent { background: var(--accent); color: var(--navy-900); }
 .btn--ghost  { background: transparent; color: var(--on-dark); border-color: rgba(245, 244, 240, 0.4); }
@@ -296,7 +360,7 @@ button { font: inherit; color: inherit; }
   .btn--ghost:hover  { border-color: var(--on-dark); background: rgba(245, 244, 240, 0.06); }
 }
 
-/* 7. Hero */
+/* 8. Hero */
 .hero {
   position: relative;
   padding-top: clamp(2.5rem, 1rem + 5vw, 5.5rem);
@@ -318,8 +382,9 @@ button { font: inherit; color: inherit; }
   line-height: 0.88;
   letter-spacing: -0.04em;
 }
-/* Shrink-wrapped, so the 3D entrance tilts around the words rather than the full column */
+/* Each line is shrink-wrapped and each letter is its own box, so the letters stand up in 3D around themselves */
 .hero__line { display: block; width: fit-content; max-width: 100%; }
+.hero__ch { display: inline-block; transform-origin: 50% 100%; }
 
 .hero__role {
   margin-top: clamp(1.25rem, 0.8rem + 1.5vw, 2rem);
@@ -328,7 +393,8 @@ button { font: inherit; color: inherit; }
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
-.hero__location { margin-top: 0.5rem; color: var(--on-dark-soft); }
+.hero__location { margin-top: 0.6rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0 0.1rem; color: var(--on-dark-soft); }
+.hero__location .icon { margin-right: 0.4rem; color: var(--accent); }
 .hero__location span { padding-inline: 0.35em; color: rgba(245, 244, 240, 0.35); }
 
 .hero__statement {
@@ -336,7 +402,6 @@ button { font: inherit; color: inherit; }
   font-size: var(--fs-lead);
   line-height: 1.5;
   max-width: 34rem;
-  color: var(--on-dark);
 }
 
 .hero__actions {
@@ -350,6 +415,7 @@ button { font: inherit; color: inherit; }
 .hero__globe { position: relative; }
 .globe {
   position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 1 / 1;
   max-width: 36rem;
@@ -362,6 +428,43 @@ button { font: inherit; color: inherit; }
 .globe.is-dragging { cursor: grabbing; }
 .globe canvas { display: block; width: 100% !important; height: 100% !important; }
 .globe:not(.is-ready) { cursor: default; }
+
+/* Floating dashboards: two live project screenshots in depth behind the globe.
+   Layers: window (place + entrance) → track (pointer parallax, set by script) → inner (3D angle + drift). */
+.hero__float {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  max-width: 36rem;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  pointer-events: none;
+}
+.float-window { position: absolute; width: 46%; }
+.float-window--a { left: -10%; bottom: 2%; }
+.float-window--b { right: -8%; top: -3%; }
+.float-window__inner {
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--navy-800);
+  box-shadow: 0 40px 70px -30px rgba(0, 0, 0, 0.75);
+  transform: perspective(1100px) rotateY(var(--ry)) rotateX(var(--rx));
+}
+.float-window--a .float-window__inner { --ry: 24deg; --rx: 8deg; }
+.float-window--b .float-window__inner { --ry: -22deg; --rx: -6deg; }
+.float-window__bar { position: relative; display: block; height: 14px; background: var(--navy-700); }
+.float-window__bar::before {
+  content: "";
+  position: absolute;
+  left: 8px; top: 5px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: rgba(245, 244, 240, 0.35);
+  box-shadow: 7px 0 0 rgba(245, 244, 240, 0.35), 14px 0 0 rgba(245, 244, 240, 0.35);
+}
+.float-window img { display: block; width: 100%; height: auto; opacity: 0.9; }
+/* The windows belong to the 3D scene: without WebGL or JavaScript they go with it */
+.hero__globe:has(.globe.is-unavailable) .hero__float,
+.no-js .hero__float { display: none; }
 
 /* Place labels on both 3D scenes, positioned each frame from projected 3D points */
 .globe__labels, .roadmap__labels { position: absolute; inset: 0; pointer-events: none; }
@@ -387,32 +490,31 @@ button { font: inherit; color: inherit; }
   max-width: 30rem;
   font-size: var(--fs-small);
   line-height: 1.5;
-  color: var(--on-dark-soft);
+  color: var(--on-dark-muted);
   text-align: center;
 }
 /* Without WebGL (or without JavaScript) the globe area collapses and the caption remains as text */
 .globe.is-unavailable, .no-js .globe { display: none; }
 
-/* Results ledger */
+/* Results ledger: three readings, each marked with the logo of the role it came from */
 .ledger {
   margin-top: clamp(3rem, 2rem + 3vw, 5rem);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line-dark);
-  border: 1px solid var(--line-dark);
-  border-radius: var(--radius-card);
-  overflow: hidden;
+  gap: 0.75rem;
 }
 .ledger__item {
-  background: var(--navy-800);
-  padding: clamp(1.25rem, 1rem + 1vw, 2rem);
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
+  padding: clamp(1.25rem, 1rem + 1vw, 1.85rem);
   display: flex;
   flex-direction: column;
 }
+.ledger__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .ledger__label { font-size: var(--fs-small); color: var(--on-dark-soft); }
 .ledger__value {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-size: clamp(2.25rem, 1.6rem + 2.2vw, 3.5rem);
   font-weight: 600;
   font-stretch: var(--stretch-display);
@@ -420,7 +522,7 @@ button { font: inherit; color: inherit; }
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.ledger__note { margin-top: 1rem; font-size: var(--fs-small); line-height: 1.5; color: var(--on-dark-soft); }
+.ledger__note { margin-top: 0.85rem; font-size: var(--fs-small); color: var(--on-dark-muted); }
 
 .bar {
   position: relative;
@@ -440,54 +542,95 @@ button { font: inherit; color: inherit; }
 .bar__fill { transform: scaleX(var(--to)); background: var(--accent); }
 /* For a reduction, the before mark sits on top as an outline so the shrink stays legible */
 .bar--down .bar__before { z-index: 1; background: transparent; box-shadow: inset 0 0 0 1.5px rgba(245, 244, 240, 0.55); }
-/* Each reading as a fraction of its scale: margin 21.2 → 40.5 on 0–50%, DSO 70 → 30 on 0–80 days, stock 95% on 0–100% */
+/* Each reading as a fraction of its scale: margin 21.2 → 40.5 on 0–50%, DSO 70 → 30 on 0–80 days,
+   stock 95% on 0–100%; a reduction of x% runs from the full bar to 1 − x */
 .bar--margin { --from: 0.424; --to: 0.81; }
 .bar--dso    { --from: 0.875; --to: 0.375; }
 .bar--stock  { --from: 0;     --to: 0.95; }
+.bar--r15    { --from: 1; --to: 0.85; }
+.bar--r30    { --from: 1; --to: 0.7; }
+.bar--r35    { --from: 1; --to: 0.65; }
+.bar--r40    { --from: 1; --to: 0.6; }
 
-/* 8. About */
+/* 9. About */
 .about {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: 3rem clamp(3rem, 6vw, 7rem);
+  align-items: start;
 }
 .about__lead .statement { margin-top: 2rem; }
-.about__body p { max-width: 36rem; }
-.about__body p + p { margin-top: 1.25rem; }
 
-.facts {
-  margin-top: 2.5rem;
-  display: grid;
-  gap: 0;
-  border-top: 1px solid var(--line-light);
-  max-width: 36rem;
+/* What I work on: one tile per focus area */
+.focus { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.focus__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.1rem 1.1rem 1.2rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
 }
-.facts > div {
-  display: grid;
-  grid-template-columns: 7rem 1fr;
-  gap: 1rem;
-  padding-block: 0.9rem;
-  border-bottom: 1px solid var(--line-light);
-}
-.facts dt { font-weight: 600; }
-.facts dd { color: var(--ink-soft); }
+.focus__item .icon { width: 1.75rem; height: 1.75rem; margin-bottom: 0.8rem; color: var(--accent); }
+.focus__name { font-weight: 600; line-height: 1.3; }
+.focus__detail { font-size: var(--fs-small); line-height: 1.4; color: var(--on-dark-muted); }
+.focus__item--place { border-color: var(--accent-line); }
 
-/* 9. Experience timeline */
+/* 10. Experience timeline. A spine runs down the left and fills in amber as the reader moves
+   through the roles; each role's dot turns amber once the fill reaches it. */
+.timeline-wrap {
+  --spine-gap: clamp(1.75rem, 1rem + 2vw, 3rem);
+  --role-pad: clamp(2.5rem, 2rem + 2vw, 3.75rem);
+  position: relative;
+  padding-left: var(--spine-gap);
+}
+.timeline__spine {
+  position: absolute;
+  left: 0.45rem; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--line-dark);
+}
+.timeline__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+.no-js .timeline__fill { transform: none; }
 .timeline { position: relative; }
 .role {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
   gap: 1.5rem clamp(2rem, 4vw, 4rem);
-  padding-block: clamp(2.5rem, 2rem + 2vw, 3.75rem);
-  border-top: 1px solid var(--line-light);
+  padding-block: var(--role-pad);
+  border-top: 1px solid var(--line-soft);
 }
-.role:last-child { border-bottom: 1px solid var(--line-light); }
+.role:last-child { border-bottom: 1px solid var(--line-soft); }
+.role::before {
+  content: "";
+  position: absolute;
+  left: calc(0.45rem + 1px - var(--spine-gap) - 7px);
+  top: calc(var(--role-pad) + 0.5rem);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--navy-950);
+  box-shadow: inset 0 0 0 2px var(--line-dark);
+  transition: background-color 300ms ease, box-shadow 300ms ease;
+}
+.role.is-reached::before, .no-js .role::before { background: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
 
 .role__meta { padding-top: 0.45rem; }
+/* Dates and place stay beside the role while its details scroll past */
+@media (min-width: 900px) {
+  .role__meta { position: sticky; top: calc(var(--nav-h) + 1.75rem); align-self: start; }
+}
 .role__dates { font-weight: 600; font-variant-numeric: tabular-nums; }
-.role__place { margin-top: 0.25rem; color: var(--muted); font-size: var(--fs-small); }
+.role__place { margin-top: 0.25rem; color: var(--on-dark-muted); font-size: var(--fs-small); }
 
+.role__head { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem 1.25rem; }
 .role__org {
   font-size: var(--fs-h3);
   font-weight: 600;
@@ -495,61 +638,126 @@ button { font: inherit; color: inherit; }
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
-.role__title { margin-top: 0.35rem; color: var(--ink-soft); font-weight: 500; }
-.role__summary { margin-top: 1rem; max-width: 40rem; }
-
-.results {
-  margin-top: 2rem;
-  display: grid;
-  gap: 0;
-  background: var(--white);
-  border: 1px solid var(--line-light);
-  border-radius: var(--radius-card);
-  overflow: hidden;
+.role__title { margin-top: 0.3rem; color: var(--on-dark-soft); font-weight: 500; }
+.role__tag {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  color: var(--on-dark-soft);
 }
-.results--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.results--grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); }
-.result {
-  background: var(--white);
-  box-shadow: 1px 0 0 var(--line-light), 0 1px 0 var(--line-light);
-  padding: 1.25rem 1.25rem 1.4rem;
+.role__summary { margin-top: 1.25rem; max-width: 40rem; color: var(--on-dark-soft); }
+
+/* Results as tiles: label, figure, note, and a small graphic of the figure at the foot */
+.metrics { margin-top: 1.75rem; display: grid; gap: 0.75rem; }
+.metrics--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.metrics--5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.metrics--7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.metric {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
 }
-.result__figure {
-  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.375rem);
+/* The headline result of a role takes two rows */
+.metric--feature { grid-row: span 2; }
+.metric__label { font-size: 0.9375rem; font-weight: 500; line-height: 1.35; color: var(--on-dark-soft); }
+.metric__value {
+  order: -1;
+  font-size: clamp(1.75rem, 1.4rem + 1.1vw, 2.25rem);
   font-weight: 600;
   font-stretch: var(--stretch-display);
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--ink);
+  margin-bottom: 0.55rem;
 }
-.result dd { font-size: 0.9375rem; line-height: 1.5; color: var(--ink-soft); }
-.result dd strong { color: var(--ink); }
+.metric--feature .metric__value { font-size: clamp(2.75rem, 2rem + 2.4vw, 4rem); }
+/* Unit words sit smaller beside their figure, so a figure never breaks across lines */
+.unit { font-size: 0.5em; font-weight: 500; letter-spacing: 0; color: var(--on-dark-soft); }
+.metric__note { margin-top: 0.35rem; font-size: var(--fs-small); line-height: 1.45; color: var(--on-dark-muted); }
+/* The graphic always sits at the foot, so tiles in a row line up; the last line of text keeps clear of it */
+.metric > [aria-hidden="true"] { margin-top: auto; }
+.metric > p:last-of-type { margin-bottom: 1.1rem; }
+.metric__icon { display: flex; }
+.metric__icon .icon { width: 2.25rem; height: 2.25rem; color: var(--accent); }
+.metric__icon--lg .icon { width: 3.75rem; height: 3.75rem; stroke-width: 1.4; }
 
-.role__work { margin-top: 2rem; display: grid; gap: 0.9rem; max-width: 46rem; }
-.role__work li { position: relative; padding-left: 1.4rem; }
-.role__work li::before {
+/* Gauge: a half ring whose amber arc covers the reading. The arc is a half ring turned into view
+   (transform only), so it can sweep in; --v is the reading from 0 to 1. */
+.gauge { --w: 9rem; --t: 0.75rem; position: relative; width: var(--w); height: calc(var(--w) / 2); overflow: hidden; }
+.gauge--sm { --w: 5.75rem; --t: 0.5rem; }
+.gauge::before, .gauge__fill {
   content: "";
   position: absolute;
-  left: 0; top: 0.68em;
-  width: 0.5rem; height: 0.5rem;
-  background: var(--accent);
-  border-radius: 1px;
+  left: 0; top: 0;
+  width: var(--w); height: var(--w);
+  border-radius: 50%;
+  border: var(--t) solid var(--navy-700);
 }
+/* Bottom and left borders amber, turned back 45° to fill the hidden lower half, then forward by the reading */
+.gauge__fill {
+  border-color: transparent transparent var(--accent) var(--accent);
+  transform: rotate(calc(-45deg + var(--v) * 180deg));
+}
+.gauge--95 { --v: 0.95; }
+.gauge--96 { --v: 0.96; }
+.gauge--97 { --v: 0.97; }
 
-.earlier { display: grid; gap: 1.25rem; max-width: 46rem; }
-.earlier__head { margin-bottom: 0.2rem; }
-.earlier p:not(.earlier__head) { color: var(--ink-soft); }
+/* Before and after, as two bars on one scale */
+.duo { display: grid; gap: 0.4rem; }
+.duo__bar { display: block; height: 0.55rem; border-radius: 4px; transform-origin: left center; }
+.duo__bar--before { background: rgba(245, 244, 240, 0.28); transform: scaleX(var(--a)); }
+.duo__bar--after { background: var(--accent); transform: scaleX(var(--b)); }
+.duo--projected .duo__bar--after { opacity: 0.6; }
+.duo--margin { --a: 0.424; --b: 0.81; }   /* 21.2% → 40.5% on 0–50% */
+.duo--dso    { --a: 0.875; --b: 0.375; }  /* 70 → 30 days on 0–80 days */
 
-/* Capacity roadmap: a navy viewport onto a 3D model of the cooperative's supply chain */
-.roadmap {
-  margin-top: 1.25rem;
+/* Counts as units: one dot per month, one block per hotel */
+.dots { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.dots i { display: block; width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--accent); }
+.dots b { margin-left: 0.15rem; font-weight: 600; line-height: 1; color: var(--accent); }
+.dots--hotels i { width: 0.8rem; height: 1rem; border-radius: 2px; }
+
+/* What else the role covered, one line each */
+.scope { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.scope li {
+  display: flex;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
   background: var(--navy-900);
-  color: var(--on-dark);
-  border-radius: var(--radius-card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--on-dark-soft);
+}
+.scope .icon { width: 1.4rem; height: 1.4rem; margin-top: 0.05rem; color: var(--accent); }
+.scope strong { color: var(--on-dark); }
+
+.earlier { display: grid; gap: 0.6rem; }
+.earlier li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto;
+  gap: 0.2rem 1.5rem;
+  align-items: baseline;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
+}
+.earlier span { color: var(--on-dark-soft); }
+.earlier .earlier__dates { color: var(--on-dark-muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Capacity roadmap: a viewport onto a 3D model of the cooperative's supply chain */
+.roadmap {
+  margin-top: 0.75rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
   overflow: hidden;
 }
 .roadmap__stage {
@@ -571,7 +779,7 @@ button { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 0.75rem 2rem;
   padding: 1rem clamp(1rem, 0.75rem + 1vw, 1.5rem) 1.15rem;
-  border-top: 1px solid var(--line-dark);
+  border-top: 1px solid var(--line-soft);
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--on-dark-soft);
@@ -595,241 +803,257 @@ button { font: inherit; color: inherit; }
 .roadmap__stage.is-unavailable + .roadmap__caption,
 .no-js .roadmap__caption { border-top: 0; }
 
-/* 10. Projects */
-/* Cards carry their own perspective() in each transform, so every card tilts around its own centre */
-.projects {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(1.25rem, 2.5vw, 2.25rem);
-}
+/* 11. Projects: a showcase. Each dashboard sits in a browser frame (its real address in the bar)
+   that straightens into focus as it reaches the middle of the screen and can be dragged to spin in 3D.
+   The frame's transform is set by script and carries its own perspective(). */
+.projects { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(4rem, 2.5rem + 6vw, 8rem); }
 .project {
-  display: flex;
-  flex-direction: column;
-  background: var(--white);
-  border: 1px solid var(--line-light);
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  transition: transform 500ms var(--ease-out), box-shadow 500ms var(--ease-out), border-color var(--dur-ui) ease;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(2rem, 1rem + 4vw, 5rem);
+  align-items: center;
 }
+.project:nth-child(even) .project__media { order: 2; }
 
-.project__media {
-  aspect-ratio: 16 / 10;
-  background: var(--navy-800);
+.project__window {
   overflow: hidden;
-  border-bottom: 1px solid var(--line-light);
+  border-radius: 10px;
+  background: var(--navy-800);
+  box-shadow: 0 60px 90px -50px rgba(0, 0, 0, 0.85), 0 0 0 1px var(--line-soft);
+  cursor: grab;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
-.project__media img {
-  width: 100%; height: 100%;
+.project__window.is-dragging { cursor: grabbing; }
+.project__chrome {
+  display: flex;
+  align-items: center;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  background: var(--navy-700);
+}
+.project__dots {
+  flex: none;
+  width: 0.5rem; height: 0.5rem;
+  margin-right: 2.6rem;
+  border-radius: 50%;
+  background: rgba(245, 244, 240, 0.32);
+  box-shadow: 0.85rem 0 0 rgba(245, 244, 240, 0.32), 1.7rem 0 0 rgba(245, 244, 240, 0.32);
+}
+.project__url {
+  flex: 0 1 28rem;
+  min-width: 0;
+  padding: 0.2rem 0.8rem;
+  border-radius: var(--radius-pill);
+  background: var(--navy-800);
+  color: var(--on-dark-soft);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project__window img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
   object-fit: cover;
   object-position: top left;
-  transform-origin: 30% 20%;
-  transition: transform 700ms var(--ease-out);
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
-.project__body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  padding: clamp(1.25rem, 1rem + 1vw, 2rem);
-}
+/* Every project reads the same way: figure, title, one line, stack, then the two ways in */
+.project__body { display: flex; flex-direction: column; }
 .project__metric {
   align-self: flex-start;
-  padding: 0.3rem 0.7rem;
-  background: var(--navy-900);
-  color: var(--on-dark);
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius-pill);
+  color: var(--accent);
   font-size: var(--fs-small);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .project__title {
   margin-top: 1rem;
-  font-size: var(--fs-h3);
+  font-size: clamp(1.625rem, 1.2rem + 1.4vw, 2.5rem);
   font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.15;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
-.project__problem { margin-top: 0.9rem; }
-.project__desc { margin-top: 0.75rem; color: var(--ink-soft); }
+.project__desc { margin-top: 0.9rem; max-width: 34rem; color: var(--on-dark-soft); }
 
 .tags { margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .tags li {
-  padding: 0.25rem 0.65rem;
-  border: 1px solid var(--line-light);
+  padding: 0.28rem 0.7rem;
+  background: var(--navy-800);
   border-radius: var(--radius-pill);
   font-size: 0.8125rem;
-  color: var(--ink-soft);
+  color: var(--on-dark-soft);
 }
 
-.project__links {
-  margin-top: auto;
-  padding-top: 1.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-}
-.link-strong, .link-quiet {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.3em;
-  transition: text-decoration-color var(--dur-fast) ease, color var(--dur-fast) ease;
-}
-.link-quiet { font-weight: 500; text-decoration-color: var(--line-light); }
+.project__links { margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
-@media (hover: hover) and (pointer: fine) {
-  .project:hover { border-color: rgba(14, 27, 46, 0.28); box-shadow: 0 24px 48px -28px rgba(14, 27, 46, 0.45); }
-  .project:hover .project__media img { transform: scale(1.03); }
-  .link-strong:hover { text-decoration-color: var(--ink); }
-  .link-quiet:hover { text-decoration-color: var(--ink); }
-}
-
-/* An odd number of cards: the last one spans both columns, image beside the text */
-@media (min-width: 900px) {
-  .projects > .project:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-    flex-direction: row;
-  }
-  .projects > .project:last-child:nth-child(odd) .project__media {
-    flex: 0 0 55%;
-    aspect-ratio: auto;
-    border-bottom: 0;
-    border-right: 1px solid var(--line-light);
-  }
-}
-
-/* 11. Skills */
+/* 12. Skills: the lists on the left; on the right a 3D yard where a gantry crane stacks one
+   container per tool. On wide screens the yard stays pinned while the section scrolls, and the
+   scroll drives the crane; on narrow screens it plays once when it comes into view. */
 .skills {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 5fr) minmax(0, 5fr);
-  gap: 3rem clamp(2rem, 4vw, 4.5rem);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "title yard" "groups yard";
+  gap: 2.75rem clamp(2.5rem, 5vw, 6rem);
   align-items: start;
 }
+.skills__title { grid-area: title; }
+.skills__groups { grid-area: groups; display: grid; gap: 3rem; }
+.yard { grid-area: yard; position: sticky; top: calc(var(--nav-h) + 1.5rem); }
+.yard__stage {
+  position: relative;
+  height: min(62vh, 36rem);
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
+  background: var(--navy-900);
+  cursor: grab;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.yard__stage.is-dragging { cursor: grabbing; }
+.yard__stage:not(.is-ready) { cursor: default; }
+.yard__stage canvas { display: block; width: 100% !important; height: 100% !important; }
+.yard__caption { margin-top: 0.85rem; max-width: 38rem; font-size: var(--fs-small); color: var(--on-dark-muted); }
+.yard__stage.is-unavailable, .no-js .yard__stage { display: none; }
 .skills__heading {
   font-size: var(--fs-h3);
   font-weight: 600;
   letter-spacing: -0.015em;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 2px solid var(--on-dark);
 }
 .skill-list li {
   padding-block: 0.8rem;
-  border-bottom: 1px solid var(--line-light);
+  border-bottom: 1px solid var(--line-soft);
   font-size: var(--fs-lead);
   line-height: 1.35;
 }
 .tool-list { margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .tool-list li {
   padding: 0.55rem 1rem;
-  background: var(--white);
-  border: 1px solid var(--line-light);
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
   border-radius: 1.4rem;
   font-weight: 500;
 }
-
-/* 12. Strategy */
-.themes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line-dark);
-  border: 1px solid var(--line-dark);
-  border-radius: var(--radius-card);
-  overflow: hidden;
+/* Linked to the yard: each tool gains an amber marker as its container lands */
+.tool-list.is-linked li::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem; height: 0.5rem;
+  margin-right: 0.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.08em;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
 }
+.tool-list.is-linked li.is-stacked::before { opacity: 1; transform: none; }
+
+/* 13. Strategy: four themes, each a principle with its result from my work */
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .theme {
-  background: var(--navy-900);
-  padding: clamp(1.5rem, 1rem + 2vw, 2.75rem);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  padding: clamp(1.5rem, 1rem + 1.5vw, 2.25rem);
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
 }
-.theme__title { font-size: var(--fs-h3); font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; }
-.theme p { max-width: 34rem; color: var(--on-dark); }
+.theme__icon { width: 2rem; height: 2rem; color: var(--accent); }
+.theme__title { margin-top: 1.25rem; font-size: var(--fs-h3); font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; }
+.theme__principle { margin-top: 0.6rem; max-width: 30rem; color: var(--on-dark-soft); }
 .theme__proof {
   margin-top: auto;
-  padding: 1rem 1.1rem;
-  background: var(--navy-800);
-  border-left: 3px solid var(--accent);
-  border-radius: 0 4px 4px 0;
-  font-size: 0.9375rem;
-  color: var(--on-dark-soft) !important;
-}
-.theme__proof-label { display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--on-dark); }
-
-.sectors { margin-top: clamp(3rem, 2rem + 3vw, 4.5rem); }
-.sectors__title { font-size: var(--fs-h3); font-weight: 600; letter-spacing: -0.015em; }
-.sectors__list {
-  margin-top: 1.5rem;
+  padding-top: 1.5rem;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 0.4rem;
 }
-.sectors__list > div { padding-top: 1rem; border-top: 2px solid var(--accent); }
-.sectors__list dt { font-weight: 600; }
-.sectors__list dd { margin-top: 0.4rem; font-size: 0.9375rem; color: var(--on-dark-soft); }
-
-/* 13. Education */
-.edu {
-  margin-top: clamp(2.5rem, 2rem + 2vw, 4rem);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 3rem clamp(2rem, 5vw, 6rem);
-}
-.edu__heading {
-  font-size: var(--fs-h3);
+.theme__proof::before { content: ""; display: block; margin-bottom: 1rem; border-top: 1px solid var(--line-soft); }
+.theme__proof-label { font-size: var(--fs-small); font-weight: 600; color: var(--accent); }
+.theme__figure {
+  font-size: clamp(2rem, 1.5rem + 1.8vw, 3rem);
   font-weight: 600;
-  letter-spacing: -0.015em;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid var(--ink);
+  font-stretch: var(--stretch-display);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
-.edu__heading--spaced { margin-top: 3rem; }
-.degree {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.15rem 1.5rem;
-  padding-block: 1.1rem;
-  border-bottom: 1px solid var(--line-light);
-}
-.degree__name { font-weight: 600; font-size: var(--fs-lead); line-height: 1.3; }
-.degree__school { grid-column: 1; color: var(--ink-soft); }
-.degree__dates { grid-column: 2; grid-row: 1; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 0.15rem; }
+.theme__figure-note { font-size: var(--fs-small); color: var(--on-dark-muted); }
 
-.cert-list a {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.1rem;
-  padding: 1rem 2.25rem 1rem 0;
-  position: relative;
-  border-bottom: 1px solid var(--line-light);
-  text-decoration: none;
-  transition: background-color var(--dur-fast) ease;
+.sectors { margin-top: clamp(2.5rem, 2rem + 2vw, 3.5rem); }
+
+/* 14. Education: degrees, then leadership and publication, then certificates */
+.cards { display: grid; gap: 0.75rem; margin-top: clamp(2.5rem, 2rem + 2vw, 3.5rem); }
+.cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cards--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.75rem; }
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.4rem 1.4rem 1.5rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
 }
-.cert-list a::after {
-  /* small external-link square, drawn in CSS */
+.card__icon { width: 1.9rem; height: 1.9rem; color: var(--accent); }
+.card__when { margin-top: 1.1rem; font-size: var(--fs-small); font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+.card__title { margin-top: 0.35rem; font-size: var(--fs-lead); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+.card__detail { margin-top: 0.35rem; font-size: 0.9375rem; color: var(--on-dark-soft); }
+.card--row { flex-direction: row; align-items: flex-start; gap: 1.1rem; }
+.card--row .card__when { margin-top: 0.15rem; }
+
+.certs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.certs li { display: flex; }
+.cert {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon name" "icon issuer";
+  align-content: start;
+  column-gap: 0.85rem;
+  row-gap: 0.15rem;
+  padding: 1.1rem 2.75rem 1.15rem 1.1rem;
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.cert .icon { grid-area: icon; width: 1.5rem; height: 1.5rem; color: var(--accent); }
+.cert__name { grid-area: name; font-weight: 600; line-height: 1.3; }
+.cert__issuer { grid-area: issuer; font-size: var(--fs-small); color: var(--on-dark-muted); }
+/* A small outward arrow, drawn in CSS: these open the certificate in a new tab */
+.cert::after {
   content: "";
   position: absolute;
-  right: 0.4rem; top: 50%;
-  width: 0.55rem; height: 0.55rem;
-  border-top: 2px solid var(--muted);
-  border-right: 2px solid var(--muted);
-  transform: translateY(-50%) rotate(0deg);
+  right: 1.1rem; top: 1.25rem;
+  width: 0.5rem; height: 0.5rem;
+  border-top: 2px solid var(--on-dark-muted);
+  border-right: 2px solid var(--on-dark-muted);
   transition: transform var(--dur-ui) var(--ease-out), border-color var(--dur-fast) ease;
 }
-.cert__name { font-weight: 600; }
-.cert__issuer { color: var(--ink-soft); font-size: 0.9375rem; }
 
 @media (hover: hover) and (pointer: fine) {
-  .cert-list a:hover .cert__name { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
-  .cert-list a:hover::after { border-color: var(--ink); transform: translate(2px, calc(-50% - 2px)); }
+  .cert:hover { border-color: var(--accent-line); background: var(--navy-800); }
+  .cert:hover::after { border-color: var(--accent); transform: translate(2px, -2px); }
 }
 
-/* 14. Contact */
+/* 15. Contact */
 .contact__grid {
   display: grid;
   grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
@@ -882,14 +1106,15 @@ button { font: inherit; color: inherit; }
   align-items: center;
   min-height: 72px;
   padding: 0.9rem 1.1rem;
-  background: var(--navy-800);
-  border: 1px solid var(--line-dark);
-  border-radius: var(--radius-card);
+  background: var(--navy-900);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-tile);
   text-decoration: none;
   transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
 }
 .contact-link:active { transform: scale(0.98); }
 .contact-link svg { grid-area: icon; color: var(--accent); }
+.contact-link .icon-fill { fill: currentColor; }
 .contact-link__name { grid-area: name; font-weight: 600; }
 .contact-link__detail { grid-area: detail; font-size: 0.875rem; color: var(--on-dark-soft); overflow-wrap: anywhere; }
 .contact-link--accent { background: var(--accent); border-color: var(--accent); color: var(--navy-900); }
@@ -897,22 +1122,23 @@ button { font: inherit; color: inherit; }
 
 @media (hover: hover) and (pointer: fine) {
   .copy-btn:hover { border-color: var(--on-dark); }
-  .contact-link:hover { border-color: rgba(245, 244, 240, 0.5); background: var(--navy-700); }
+  .contact-link:hover { border-color: rgba(245, 244, 240, 0.4); background: var(--navy-800); }
   .contact-link--accent:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 }
 
-/* 15. Footer */
-.site-footer { background: var(--navy-950); padding-block: clamp(3rem, 2rem + 4vw, 5.5rem) 2.5rem; overflow: hidden; }
+/* 16. Footer */
+.site-footer { border-top: 1px solid var(--line-soft); padding-block: clamp(3rem, 2rem + 4vw, 5.5rem) 2.5rem; overflow: hidden; }
 .footer__inner { display: grid; gap: 2rem; }
+/* The name returns at the full width of the page: measured at 5.96 × its size wide, so this fits
+   one line at every width from 320px up, capped where the container stops growing */
 .footer__name {
   width: fit-content;
   max-width: 100%;
-  font-size: clamp(3rem, 1rem + 9vw, 10rem);
+  font-size: min(14.4vw, 13.2rem);
   font-weight: 600;
   font-stretch: var(--stretch-display);
   letter-spacing: -0.045em;
   line-height: 0.85;
-  color: var(--on-dark);
 }
 .footer__meta {
   display: flex;
@@ -920,31 +1146,51 @@ button { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 0.75rem 2rem;
   font-size: var(--fs-small);
-  color: var(--on-dark-soft);
+  color: var(--on-dark-muted);
 }
+.footer__meta p { max-width: 46rem; }
 .footer__meta a { display: inline-block; padding-block: 0.6rem; color: var(--on-dark); margin-block: -0.6rem; }
 
-/* 16. Motion ------------------------------------------------------------ */
+/* 17. Motion ------------------------------------------------------------ */
 
 /* Hero entrance: CSS keyframes, so it runs off the main thread and needs no script.
-   The name stands up in 3D (a perspective tilt that settles flat); the rest rises 28px. */
+   Each letter of the name stands up in 3D (a perspective tilt that settles flat), left to right,
+   the second line just after the first; the rest rises 28px; the dashboards float in last. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero__line {
-    transform-origin: 50% 100%;
-    animation: stand-up var(--dur-stand) var(--ease-out) both;
-  }
+  .hero__ch { animation: stand-up-ch 1000ms var(--ease-out) both; }
+  .hero__ch:nth-child(2) { animation-delay: 32ms; }
+  .hero__ch:nth-child(3) { animation-delay: 64ms; }
+  .hero__ch:nth-child(4) { animation-delay: 96ms; }
+  .hero__ch:nth-child(5) { animation-delay: 128ms; }
+  .hero__ch:nth-child(6) { animation-delay: 160ms; }
+  .hero__ch:nth-child(7) { animation-delay: 192ms; }
+  .hero__ch:nth-child(8) { animation-delay: 224ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(1) { animation-delay: 110ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(2) { animation-delay: 142ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(3) { animation-delay: 174ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(4) { animation-delay: 206ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(5) { animation-delay: 238ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(6) { animation-delay: 270ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(7) { animation-delay: 302ms; }
+  .hero__line + .hero__line .hero__ch:nth-child(8) { animation-delay: 334ms; }
   .hero__role, .hero__location, .hero__statement, .hero__actions {
     animation: rise var(--dur-reveal) var(--ease-out) both;
   }
-  .hero__line:nth-child(2) { animation-delay: 70ms; }
-  .hero__role      { animation-delay: 160ms; }
-  .hero__location  { animation-delay: 220ms; }
-  .hero__statement { animation-delay: 280ms; }
-  .hero__actions   { animation-delay: 340ms; }
+  .hero__role      { animation-delay: 240ms; }
+  .hero__location  { animation-delay: 290ms; }
+  .hero__statement { animation-delay: 340ms; }
+  .hero__actions   { animation-delay: 400ms; }
   .hero__globe     { animation: fade 1200ms var(--ease-out) 200ms both; }
 
-  /* The ledger rises as one panel, then its bars grow from the "before" reading to the result */
-  .ledger { transform-origin: 50% 100%; animation: lift 900ms var(--ease-out) 380ms both; }
+  /* Dashboards drift in behind the globe once it has gathered, then bob gently, out of step */
+  .float-window--a { animation: float-in 1200ms var(--ease-out) 1300ms both, bob 7s ease-in-out 2500ms infinite; }
+  .float-window--b { animation: float-in 1200ms var(--ease-out) 1550ms both, bob 9s ease-in-out 2750ms infinite; }
+
+  /* The ledger panels rise one after another, then their bars grow from the "before" reading */
+  .ledger__item { transform-origin: 50% 100%; animation: lift 900ms var(--ease-out) both; }
+  .ledger__item:nth-child(1) { animation-delay: 380ms; }
+  .ledger__item:nth-child(2) { animation-delay: 450ms; }
+  .ledger__item:nth-child(3) { animation-delay: 520ms; }
   .ledger .bar__fill { animation: bar-grow 1400ms var(--ease-in-out) 600ms both; }
   .ledger .bar__before { animation: fade 500ms ease 450ms both; }
 }
@@ -953,9 +1199,17 @@ button { font: inherit; color: inherit; }
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes stand-up {
-  from { opacity: 0; transform: perspective(900px) translate3d(0, 28px, 0) rotateX(42deg); }
+@keyframes stand-up-ch {
+  from { opacity: 0; transform: perspective(600px) translate3d(0, 0.3em, 0) rotateX(72deg); }
   to   { opacity: 1; transform: none; }
+}
+@keyframes float-in {
+  from { opacity: 0; transform: translate3d(0, -24px, 0) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes bob {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -9px, 0); }
 }
 @keyframes lift {
   from { opacity: 0; transform: perspective(1400px) translate3d(0, 28px, 0) rotateX(8deg); }
@@ -966,6 +1220,14 @@ button { font: inherit; color: inherit; }
   from { transform: scaleX(var(--from)); }
   to   { transform: scaleX(var(--to)); }
 }
+/* Tiles and graphics: only "from" states, so each settles on its own resting style.
+   With fill-mode backwards they hold the start through their delay and then let go, which also
+   frees a tile's transform for the pointer lean once it has arrived. */
+@keyframes tile-in { from { opacity: 0; transform: perspective(1000px) translate3d(0, 26px, 0) rotateX(12deg); } }
+@keyframes gauge-sweep { from { transform: rotate(-45deg); } }
+@keyframes duo-grow { from { transform: scaleX(0); } }
+@keyframes dot-pop { from { opacity: 0; transform: scale(0.4); } }
+@keyframes icon-in { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.85); } }
 
 /* Scroll reveal: only applies once script.js has marked the page (html.js) and found IntersectionObserver.
    Elements rise 24px and fade, tilted slightly back in perspective so they settle into the page plane. */
@@ -989,26 +1251,77 @@ button { font: inherit; color: inherit; }
   .js.reveal-ready .section-title.reveal.is-visible,
   .js.reveal-ready .footer__name.reveal.is-visible { transform: none; }
 
-  /* Project cards lift from further back; once revealed they keep their own transform for the tilt */
-  .js.reveal-ready .project.reveal {
-    transform: perspective(1400px) translate3d(0, 48px, 0) rotateX(10deg);
-    transform-origin: 50% 0%;
+  /* Split headings: the heading itself holds still and each word (or letter) stands up in turn.
+     These follow the rules above so they win at equal specificity. */
+  .js.reveal-ready .reveal.split { opacity: 1; transform: none; }
+  .js.reveal-ready .split .split-part {
+    opacity: 0;
+    transform: perspective(700px) translate3d(0, 0.32em, 0) rotateX(64deg);
+    transform-origin: 50% 100%;
+    transition: opacity 700ms var(--ease-out), transform var(--dur-stand) var(--ease-out);
+    transition-delay: calc(var(--d, 0) * 1ms);
   }
-  .js.reveal-ready .project.reveal.is-visible {
-    transform: none;
-    transition: opacity var(--dur-reveal) var(--ease-out), transform 800ms var(--ease-out),
-                box-shadow 500ms var(--ease-out), border-color var(--dur-ui) ease;
-    transition-delay: calc(var(--i, 0) * 90ms);
+  .js.reveal-ready .split.is-visible .split-part { opacity: 1; transform: none; }
+
+  /* Staggered lists: the list holds still and its tiles arrive one after another (--k is each
+     tile's place in the list, set by script); then each tile's graphic plays */
+  .js.reveal-ready .reveal.stagger { opacity: 1; transform: none; }
+  .js.reveal-ready .stagger > * { opacity: 0; transform-origin: 50% 100%; }
+  .js.reveal-ready .stagger.is-visible > * {
+    opacity: 1;
+    animation: tile-in 820ms var(--ease-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms);
   }
-  .js.reveal-ready .project.reveal.is-visible.is-settled { transition-delay: 0s; }
+  .js.reveal-ready .stagger.is-visible .gauge__fill {
+    animation: gauge-sweep 1500ms var(--ease-in-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 300ms);
+  }
+  .js.reveal-ready .stagger.is-visible .duo__bar {
+    animation: duo-grow 1200ms var(--ease-in-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 300ms);
+  }
+  .js.reveal-ready .stagger.is-visible .duo__bar--after { animation-delay: calc(var(--k, 0) * 75ms + 520ms); }
+  .js.reveal-ready .stagger.is-visible .bar__fill {
+    animation: bar-grow 1400ms var(--ease-in-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 450ms);
+  }
+  .js.reveal-ready .stagger.is-visible .bar__before {
+    animation: fade 500ms ease backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 250ms);
+  }
+  .js.reveal-ready .stagger.is-visible .dots > * {
+    animation: dot-pop 420ms var(--ease-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 300ms + var(--n, 0) * 55ms);
+  }
+  .js.reveal-ready .stagger.is-visible .metric__icon .icon,
+  .js.reveal-ready .stagger.is-visible .focus__item .icon,
+  .js.reveal-ready .stagger.is-visible .theme__icon,
+  .js.reveal-ready .stagger.is-visible .card__icon {
+    animation: icon-in 700ms var(--ease-out) backwards;
+    animation-delay: calc(var(--k, 0) * 75ms + 260ms);
+  }
+
+  /* The About statement lights word by word as it scrolls through the view */
+  .js .is-lighting .light-w { opacity: 0.18; transition: opacity 260ms ease; }
+  .js .is-lighting .light-w.is-lit { opacity: 1; }
 }
 
-/* While the pointer steers a card, script.js eases the transform itself, so CSS must not lag it */
-.project.is-tilting,
-.js.reveal-ready .project.reveal.is-visible.is-tilting {
-  transition: box-shadow 300ms var(--ease-out), border-color var(--dur-ui) ease;
-}
-.project.is-tilting .project__media img { transition: none; }
+/* Each unit in a count arrives a beat after the last */
+.dots > :nth-child(2)  { --n: 1; }
+.dots > :nth-child(3)  { --n: 2; }
+.dots > :nth-child(4)  { --n: 3; }
+.dots > :nth-child(5)  { --n: 4; }
+.dots > :nth-child(6)  { --n: 5; }
+.dots > :nth-child(7)  { --n: 6; }
+.dots > :nth-child(8)  { --n: 7; }
+.dots > :nth-child(9)  { --n: 8; }
+.dots > :nth-child(10) { --n: 9; }
+.dots > :nth-child(11) { --n: 10; }
+.dots > :nth-child(12) { --n: 11; }
+
+/* Words and letters of split headings are boxes, so they can turn in 3D; a word never breaks inside */
+.split-word { display: inline-block; white-space: nowrap; }
+.split-part { display: inline-block; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1018,7 +1331,7 @@ button { font: inherit; color: inherit; }
   }
 }
 
-/* 17. Responsive ---------------------------------------------------------- */
+/* 18. Responsive ---------------------------------------------------------- */
 @media (min-width: 900px) {
   .section-head--split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
 }
@@ -1070,37 +1383,81 @@ button { font: inherit; color: inherit; }
   .no-js .nav { flex-wrap: wrap; }
 }
 
+/* Narrower desktops: seven tiles in three columns, the headline tile across the top */
+@media (max-width: 1199.98px) {
+  .metrics--7 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .metrics--7 .metric--feature { grid-row: auto; grid-column: 1 / -1; }
+}
+/* A headline tile across a whole row reads sideways: figure and words left, graphic right */
+@media (max-width: 1199.98px) {
+  .metrics--7 .metric--feature { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1.5rem; align-items: end; }
+  .metrics--7 .metric--feature > .metric__value { grid-area: 1 / 1; }
+  .metrics--7 .metric--feature > .metric__label { grid-area: 2 / 1; }
+  .metrics--7 .metric--feature > .metric__note { grid-area: 3 / 1; margin-bottom: 0; }
+  .metrics--7 .metric--feature > [aria-hidden="true"] { grid-area: 1 / 2 / 4 / 3; }
+}
+@media (max-width: 1023.98px) {
+  .metrics--5 .metric--feature { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1.5rem; align-items: end; }
+  .metrics--5 .metric--feature > .metric__value { grid-area: 1 / 1; }
+  .metrics--5 .metric--feature > .metric__label { grid-area: 2 / 1; }
+  .metrics--5 .metric--feature > .metric__note { grid-area: 3 / 1; margin-bottom: 0; }
+  .metrics--5 .metric--feature > [aria-hidden="true"] { grid-area: 1 / 2 / 4 / 3; }
+}
+
 @media (max-width: 1023.98px) {
   .hero__grid { grid-template-columns: 1fr; gap: 2.5rem; }
-  .globe { max-width: 30rem; }
+  .globe, .hero__float { max-width: 30rem; }
   .ledger { grid-template-columns: 1fr; }
   .about { grid-template-columns: 1fr; }
-  .skills { grid-template-columns: 1fr 1fr; }
-  .skills__title { grid-column: 1 / -1; }
-  .sectors__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* The yard moves between the title and the lists and plays when it comes into view */
+  .skills { grid-template-columns: 1fr; grid-template-rows: auto; grid-template-areas: "title" "yard" "groups"; }
+  .yard { position: static; }
+  .yard__stage { height: auto; aspect-ratio: 4 / 3; }
+  .skills__groups { grid-template-columns: 1fr 1fr; }
   .contact__grid { grid-template-columns: 1fr; align-items: start; }
+  /* Bento grids turn into two columns, with the headline tile across the top */
+  .metrics--7, .metrics--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric--feature { grid-row: auto; grid-column: 1 / -1; }
 }
 
 @media (max-width: 899.98px) {
-  .projects { grid-template-columns: 1fr; }
+  /* minmax(0, …): the address bar's unbreakable text must never widen the column past the screen */
+  .project { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
+  .project:nth-child(even) .project__media { order: 0; }
   .themes { grid-template-columns: 1fr; }
-  .results--3 { grid-template-columns: 1fr; }
   .role { grid-template-columns: 1fr; gap: 0.75rem; }
   .role__meta { padding-top: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; align-items: baseline; }
   .role__place { margin-top: 0; }
-  .edu { grid-template-columns: 1fr; }
+  .cards--3 { grid-template-columns: 1fr; }
+  .certs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .roadmap__stage { aspect-ratio: 16 / 11; }
 }
 
 @media (max-width: 599.98px) {
   :root { --nav-h: 3.75rem; }
   .hero__actions .btn { flex: 1 1 100%; }
-  .skills { grid-template-columns: 1fr; }
-  .sectors__list { grid-template-columns: 1fr; }
+  .skills__groups { grid-template-columns: 1fr; }
+  .yard__stage { aspect-ratio: 1 / 1; }
+  /* On a phone one dashboard is enough: the lower one would crowd the caption */
+  .float-window--a { display: none; }
+  .float-window--b { width: 36%; right: -5%; top: -9%; }
+  .focus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics--3 { grid-template-columns: 1fr; }
+  .metric { padding: 1rem 1rem 1.1rem; }
+  .gauge--sm { --w: 5rem; }
+  /* Too narrow for a sideways headline tile: the graphic returns to the foot */
+  .metrics--7 .metric--feature, .metrics--5 .metric--feature { display: flex; }
+  .metrics--7 .metric--feature > .metric__note, .metrics--5 .metric--feature > .metric__note { margin-bottom: 1.1rem; }
+  .dots { gap: 0.3rem; }
+  .dots i { width: 0.6rem; height: 0.6rem; }
+  .dots--hotels i { width: 0.65rem; height: 0.85rem; }
+  .scope { grid-template-columns: 1fr; }
+  .earlier li { grid-template-columns: 1fr; }
+  .cards--2, .certs { grid-template-columns: 1fr; }
   .contact__actions { grid-template-columns: 1fr; }
-  .facts > div { grid-template-columns: 1fr; gap: 0.15rem; }
-  .degree { grid-template-columns: 1fr; }
-  .degree__dates { grid-column: 1; grid-row: auto; padding-top: 0.25rem; }
+  .logo-tile { width: 7rem; height: 3rem; padding: 0.6rem 0.8rem; }
+  .logo-tile--tall { padding: 0.4rem; }
+  .logo-tile--sm { width: 4.5rem; height: 1.8rem; padding: 0.35rem 0.5rem; }
   .wordmark { font-size: 1rem; }
   .roadmap__stage { aspect-ratio: 5 / 6; }
   /* Small model, so labels shrink and the long one wraps onto two centred lines */
@@ -1110,11 +1467,18 @@ button { font: inherit; color: inherit; }
 @media (max-width: 359.98px) {
   .menu-toggle__label { display: none; }
   .ledger__value { font-size: 2rem; }
+  .focus { grid-template-columns: 1fr; }
 }
 
-/* 18. Print */
+/* 19. Print: light paper, no scenes, everything visible */
 @media print {
-  .site-header, .hero__globe, .roadmap__stage, .roadmap__legend, .skip-link, .copy-btn { display: none !important; }
-  .reveal { opacity: 1 !important; transform: none !important; }
-  .field-dark, .roadmap { background: #fff; color: #000; }
+  html, body { background: #fff; color: #000; }
+  .site-header, .hero__globe, .roadmap__stage, .roadmap__legend, .yard__stage, .timeline__spine, .skip-link, .copy-btn { display: none !important; }
+  .project__window { transform: none !important; box-shadow: none; }
+  .reveal, .stagger > * { opacity: 1 !important; transform: none !important; animation: none !important; }
+  .ledger__item, .metric, .focus__item, .scope li, .theme, .card, .cert, .contact-link, .roadmap, .chips li, .tool-list li, .earlier li {
+    background: #fff; color: #000; border-color: #bbb;
+  }
+  .section-intro, .ledger__label, .ledger__note, .metric__label, .metric__note, .role__title, .role__summary, .theme__principle,
+  .theme__figure-note, .card__detail, .cert__issuer, .project__desc, .footer__meta { color: #333; }
 }

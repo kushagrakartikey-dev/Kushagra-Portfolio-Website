@@ -9,6 +9,14 @@
 - **Do not add** the `nutricircle-sop-intelligence` project.
 - **Do not copy anything** from the owner's old Lovable portfolio, and do not link to it.
 - The reference site `https://rehan19-cmd.github.io/portfolio/` is visual inspiration only. Copy nothing.
+- **Company names (October 2026).**
+  - Show the DHL role's company as **DHL** only, never "DHL GBSN Fellowship"; the title stays as on the resume.
+  - Show the event role's organisation as **BWF (Badminton World Federation)**, never the championship's name.
+- **Logos (October 2026).** Show the official DHL, Decathlon and BWF logos beside those roles:
+  - unaltered, as served on the organisations' own websites (`assets/logos/`);
+  - DHL's on DHL yellow, the others on white;
+  - with a trademark line in the footer.
+- **Minimal text (October 2026).** Keep only the important words, and show results as figures and graphics (gauges, before→after bars, reduction bars, unit dots) instead of prose.
 
 ## Accuracy rules
 
@@ -16,7 +24,7 @@
 - Keep the source's attribution: say **"projected"** for the DSO change and the USD 35K, and **"modelled"** for the 3.78 → 4.04 sigma result. The 35K is a release of cash, not a recurring annual saving.
 - Spell out **Days Sales Outstanding (DSO)** on first use; also EUDR (EU Deforestation Regulation) and HREDD (human rights and environmental due diligence).
 - Project cards must say the projects run on **synthetic data** (each repo's README says so).
-- No fake testimonials, logos, ratings, endorsements or structured data. No placeholders in the published site.
+- No fake testimonials, ratings, endorsements or structured data, and no logos besides the three employer logos above. No placeholders in the published site.
 
 ## Contact (verified from the resume)
 
@@ -31,7 +39,7 @@
 
 ## Experience (most recent first)
 
-**DHL GBSN Fellowship** — SME Business Consultant (GBSN Fellow). Washington, DC, USA (Remote). Jan 2026 – Present. Ugandan coffee cooperative.
+**DHL** (the programme is the DHL GBSN Fellowship; the site shows the company as DHL) — SME Business Consultant (GBSN Fellow). Washington, DC, USA (Remote). Jan 2026 – Present. Ugandan coffee cooperative.
 - Gross margin **21.2% → 40.5%**: rebuilt the COGS model; recommended cost-allocation changes raised margin once implemented.
 - DSO **70 → 30 days, projected**: order-to-cash modelling and buyer renegotiations.
 - **~USD 35K** liquidity released, projected; presented to cooperative leadership and DHL stakeholders.
@@ -48,7 +56,7 @@
 - **96%** customer satisfaction
 - **10%** month-over-month digital sales growth
 
-**Syed Modi International Badminton Championship 2023** (BWF World Tour Super 300), Lucknow. Nov 2023 – Dec 2023. Role from resume: Event Coordinator, Transport & Accommodation. Do not name an employer.
+**BWF (Badminton World Federation)**, as the site shows it. The event was the Syed Modi International Badminton Championship 2023, a BWF World Tour Super 300 in Lucknow; do not name the championship on the site, and tag the role "World Tour Super 300 event". Nov 2023 – Dec 2023. Role from resume: Event Coordinator, Transport & Accommodation.
 - Transport for **480+** participants with 3PL partners; **95%** on-time; 7 functional teams
 - Accommodation for **450+** participants across **12** hotels; **97%** lodging satisfaction
 - **15%** vendor-cost reduction with **12+** hotel and 3PL vendors, service levels held

@@ -2,9 +2,11 @@
    Kushagra Kartikey — Portfolio scripts
    Vanilla JavaScript, no build step. Every module is optional: if one fails,
    the page content stays visible and the rest keeps working.
-   Modules: header, menu, scroll spy, reveal, counters, card tilt, copy email,
-   footer year, and two 3D scenes built with three.js (loaded lazily from
-   assets/vendor): the hero globe and the capacity-roadmap model.
+   Modules: header, menu, scroll spy, split headings, reveal, counters, one
+   shared scroll loop (progress line, word lighting, timeline spine, project
+   frames), floating windows, tile lean, copy email, footer year, and three 3D
+   scenes built with three.js (loaded lazily from assets/vendor): the hero
+   globe, the capacity-roadmap model and the container yard.
    ========================================================================== */
 (function () {
   'use strict';
@@ -178,11 +180,12 @@
     function show(el, order) {
       el.style.setProperty('--i', String(Math.min(order, 6)));
       el.classList.add('is-visible');
-      // Cards drop their stagger once revealed, so the pointer tilt responds at once
-      if (el.classList.contains('project')) {
-        window.setTimeout(function () { el.classList.add('is-settled'); }, 1200);
-      }
     }
+
+    // Tiles in a staggered list arrive in order: each one's place becomes --k for its delays
+    Array.prototype.forEach.call(document.querySelectorAll('.stagger'), function (list) {
+      Array.prototype.forEach.call(list.children, function (child, k) { child.style.setProperty('--k', String(Math.min(k, 9))); });
+    });
 
     var observer = new IntersectionObserver(function (entries) {
       // Stagger only among the elements entering in this batch, top to bottom, left to right
@@ -222,13 +225,14 @@
     window.addEventListener('beforeprint', function () { items.forEach(function (el) { show(el, 0); }); });
   }
 
-  /* ---------- Ledger counters: count from the "before" reading to the result ---------- */
+  /* ---------- Counters: each figure counts from its "before" reading to the result as it comes
+     into view; the hero's keep time with the ledger's entrance, the rest with their tile's ---------- */
   function initCounters() {
-    if (reducedMotion()) return; // final values are already in the HTML
+    if (reducedMotion() || !('IntersectionObserver' in window)) return; // final values are already in the HTML
     var nodes = document.querySelectorAll('[data-count-to]');
-    var duration = 1400, delay = 600;
+    var duration = 1400;
 
-    Array.prototype.forEach.call(nodes, function (node) {
+    function count(node, delay) {
       var from = parseFloat(node.getAttribute('data-count-from'));
       var to = parseFloat(node.getAttribute('data-count-to'));
       var decimals = parseInt(node.getAttribute('data-decimals') || '0', 10);
@@ -245,69 +249,350 @@
         else node.textContent = finalText;
       }
       window.requestAnimationFrame(frame);
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        io.unobserve(entry.target);
+        var tile = entry.target.closest('.stagger > *');
+        var k = tile ? parseFloat(tile.style.getPropertyValue('--k')) || 0 : 0;
+        count(entry.target, entry.target.closest('.hero') ? 600 : 300 + k * 75);
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    Array.prototype.forEach.call(nodes, function (node) { io.observe(node); });
+  }
+
+  /* ---------- One scroll loop for every scroll-linked effect ----------
+     Each effect reads what it needs and returns a function that writes (transforms, classes),
+     so every read in a frame happens before any write. */
+  var scrollEffects = [];
+  var scrollRaf = 0;
+  function runScrollFrame() {
+    scrollRaf = 0;
+    var vh = window.innerHeight;
+    var writes = scrollEffects.map(function (read) { return read(vh); });
+    writes.forEach(function (write) { if (write) write(); });
+  }
+  function requestScrollFrame() { if (!scrollRaf) scrollRaf = window.requestAnimationFrame(runScrollFrame); }
+  function onScroll(read) {
+    if (!scrollEffects.length) {
+      window.addEventListener('scroll', requestScrollFrame, { passive: true });
+      window.addEventListener('resize', requestScrollFrame);
+    }
+    scrollEffects.push(read);
+    requestScrollFrame();
+  }
+
+  /* ---------- Display headings: split into words (letters for one-word headings and the footer
+     name) so each part can stand up in 3D as the heading is revealed. A visually hidden copy keeps
+     the full text for assistive technology; the split copy is aria-hidden. ---------- */
+  function initSplitText() {
+    if (!('IntersectionObserver' in window)) return; // no scroll reveal, so nothing to stagger
+    Array.prototype.forEach.call(document.querySelectorAll('.section-title, .footer__name'), function (el) {
+      var text = el.textContent.replace(/\s+/g, ' ').trim();
+      var words = text.split(' ');
+      var byLetter = words.length === 1 || el.classList.contains('footer__name');
+      var said = document.createElement('span');
+      said.className = 'visually-hidden';
+      said.textContent = text;
+      var shown = document.createElement('span');
+      shown.setAttribute('aria-hidden', 'true');
+      var order = 0;
+      words.forEach(function (w, wi) {
+        var word = document.createElement('span');
+        word.className = 'split-word';
+        (byLetter ? w.split('') : [w]).forEach(function (piece) {
+          var part = document.createElement('span');
+          part.className = 'split-part';
+          part.textContent = piece;
+          part.style.setProperty('--d', String(order++ * (byLetter ? 28 : 75)));
+          word.appendChild(part);
+        });
+        shown.appendChild(word);
+        if (wi < words.length - 1) shown.appendChild(document.createTextNode(' '));
+      });
+      el.textContent = '';
+      el.appendChild(said);
+      el.appendChild(shown);
+      el.classList.add('split');
     });
   }
 
-  /* ---------- Project cards: 3D tilt toward the pointer, with the screenshot drifting the other way (mouse only) ---------- */
-  function initTilt() {
-    var cards = document.querySelectorAll('[data-tilt]');
-    var maxTilt = 4; // degrees
-
-    Array.prototype.forEach.call(cards, function (card) {
-      var img = card.querySelector('.project__media img');
-      var raf = 0, last = 0, hovering = false, gain = 1;
-      var target = { x: 0, y: 0, lift: 0 }, now = { x: 0, y: 0, lift: 0 };
-
-      // Eases toward the pointer like a light spring, then hands the card back to CSS once at rest
-      function frame(time) {
-        raf = 0;
-        var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
-        last = time;
-        var k = 1 - Math.exp(-dt * 10);
-        now.x += (target.x - now.x) * k;
-        now.y += (target.y - now.y) * k;
-        now.lift += (target.lift - now.lift) * k;
-        if (!hovering && Math.abs(now.x) + Math.abs(now.y) + now.lift < 0.002) {
-          card.classList.remove('is-tilting');
-          card.style.transform = '';
-          if (img) img.style.transform = '';
-          last = 0;
-          return;
-        }
-        card.style.transform = 'perspective(1400px) rotateX(' + (-now.y * maxTilt * gain).toFixed(3) + 'deg) rotateY(' +
-          (now.x * maxTilt * gain).toFixed(3) + 'deg) translate3d(0, ' + (-4 * now.lift).toFixed(2) + 'px, 0)';
-        if (img) {
-          img.style.transform = 'scale(' + (1 + 0.05 * now.lift).toFixed(4) + ') translate3d(' +
-            (-now.x * 14).toFixed(2) + 'px, ' + (-now.y * 10).toFixed(2) + 'px, 0)';
-        }
-        raf = window.requestAnimationFrame(frame);
-      }
-      function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
-
-      card.addEventListener('pointerenter', function (e) {
-        if (e.pointerType !== 'mouse' || !finePointer() || reducedMotion()) return;
-        // Wait until the card has finished its entrance
-        if (root.classList.contains('reveal-ready') && !card.classList.contains('is-settled')) return;
-        hovering = true;
-        gain = Math.min(1, 640 / Math.max(1, card.offsetWidth)); // wide cards tilt less
-        target.lift = 1;
-        card.classList.add('is-tilting');
-        kick();
-      });
-      card.addEventListener('pointermove', function (e) {
-        if (!hovering) return;
-        var rect = card.getBoundingClientRect();
-        target.x = (e.clientX - rect.left) / rect.width - 0.5;
-        target.y = (e.clientY - rect.top) / rect.height - 0.5;
-        kick();
-      });
-      card.addEventListener('pointerleave', function () {
-        if (!hovering) return;
-        hovering = false;
-        target.x = 0; target.y = 0; target.lift = 0;
-        kick();
-      });
+  /* ---------- Reading progress along the foot of the header ---------- */
+  function initProgress() {
+    var bar = document.querySelector('.scroll-progress__bar');
+    if (!bar) return;
+    var shown = -1;
+    onScroll(function (vh) {
+      var max = document.documentElement.scrollHeight - vh;
+      var p = max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
+      if (Math.abs(p - shown) < 0.0005) return null;
+      return function () { shown = p; bar.style.transform = 'scaleX(' + p.toFixed(4) + ')'; };
     });
+  }
+
+  /* ---------- The About statement lights word by word as it moves up the screen ---------- */
+  function initWordLight() {
+    var el = document.querySelector('[data-light]');
+    if (!el || reducedMotion()) return;
+    var words = el.textContent.trim().split(/\s+/);
+    el.textContent = '';
+    var spans = words.map(function (w, i) {
+      var s = document.createElement('span');
+      s.className = 'light-w';
+      s.textContent = w;
+      el.appendChild(s);
+      if (i < words.length - 1) el.appendChild(document.createTextNode(' '));
+      return s;
+    });
+    el.classList.add('is-lighting');
+    var lit = -1;
+    onScroll(function (vh) {
+      var r = el.getBoundingClientRect();
+      // From the statement's top at 90% of the screen to its foot at 72%, so it is fully lit
+      // by the time the section settles under the header
+      var p = clamp((vh * 0.9 - r.top) / (vh * 0.18 + r.height), 0, 1);
+      var n = Math.round(p * spans.length);
+      if (n === lit) return null;
+      return function () {
+        lit = n;
+        spans.forEach(function (s, i) { s.classList.toggle('is-lit', i < n); });
+      };
+    });
+  }
+
+  /* ---------- Experience: the spine fills as a reading line (55% down the screen) moves through
+     the roles, and each role's dot turns amber when the fill reaches it ---------- */
+  function initSpine() {
+    var wrap = document.querySelector('.timeline-wrap');
+    var fill = wrap && wrap.querySelector('.timeline__fill');
+    if (!fill) return;
+    var roles = Array.prototype.slice.call(wrap.querySelectorAll('.role'));
+    var dotOffset = 64;
+    function measure() {
+      var t = parseFloat(window.getComputedStyle(roles[0], '::before').top);
+      if (!isNaN(t)) dotOffset = t + 7;
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    onScroll(function (vh) {
+      var line = vh * 0.55;
+      var r = wrap.getBoundingClientRect();
+      var p = clamp((line - r.top) / r.height, 0, 1);
+      var reached = roles.map(function (role) { return role.getBoundingClientRect().top + dotOffset <= line; });
+      return function () {
+        fill.style.transform = 'scaleY(' + p.toFixed(4) + ')';
+        roles.forEach(function (role, i) { role.classList.toggle('is-reached', reached[i]); });
+      };
+    });
+  }
+
+  /* ---------- Hero: the floating dashboards lean away from a mouse pointer, each by its depth,
+     so they read as further back than the globe. They never drift with the scroll, which would
+     carry them over the caption. ---------- */
+  function initFloatWindows() {
+    var hero = document.getElementById('top');
+    var tracks = Array.prototype.slice.call(document.querySelectorAll('.float-window__track'));
+    if (!hero || !tracks.length) return;
+    var depth = tracks.map(function (t) { return parseFloat(t.getAttribute('data-depth')) || 1; });
+    var lean = { x: 0, y: 0, tx: 0, ty: 0 }, raf = 0, last = 0;
+    function write() {
+      tracks.forEach(function (t, i) {
+        var d = depth[i];
+        t.style.transform = 'translate3d(' + (-lean.x * 18 * d).toFixed(2) + 'px,' + (-lean.y * 12 * d).toFixed(2) + 'px,0)';
+      });
+    }
+    function frame(time) {
+      raf = 0;
+      var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
+      last = time;
+      var k = 1 - Math.exp(-dt * 4);
+      lean.x += (lean.tx - lean.x) * k;
+      lean.y += (lean.ty - lean.y) * k;
+      write();
+      if (Math.abs(lean.tx - lean.x) + Math.abs(lean.ty - lean.y) > 0.002) raf = window.requestAnimationFrame(frame);
+      else last = 0;
+    }
+    function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
+    hero.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !finePointer() || reducedMotion()) return;
+      lean.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      lean.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      kick();
+    });
+    hero.addEventListener('pointerleave', function () { lean.tx = 0; lean.ty = 0; kick(); });
+  }
+
+  /* ---------- Projects: each framed dashboard straightens into focus as it nears the middle of
+     the screen, leans toward a mouse pointer, and can be dragged to spin; it springs back on release.
+     Positions are read from the untransformed parent, so the frame's own turn never feeds back. ---------- */
+  function initShowcase() {
+    var frames = Array.prototype.slice.call(document.querySelectorAll('[data-spin]'));
+    if (!frames.length) return;
+    var items = frames.map(function (el) {
+      return { el: el, box: el.parentElement, side: 1, near: true, s: 0, spin: 0, vel: 0, dragging: false,
+               lastX: 0, hx: 0, hy: 0, tx: 0, ty: 0, raf: 0, last: 0 };
+    });
+
+    // A frame left of its text opens toward the right, and the reverse; a stacked frame faces front
+    function measureSides() {
+      items.forEach(function (it) {
+        var r = it.box.getBoundingClientRect(), rr = it.box.parentElement.getBoundingClientRect();
+        var mid = r.left + r.width / 2, rowMid = rr.left + rr.width / 2;
+        it.side = Math.abs(mid - rowMid) < 8 ? 0 : (mid < rowMid ? 1 : -1);
+      });
+    }
+
+    function render(it) {
+      var still = reducedMotion();
+      var s = still ? 0 : it.s;
+      var rotY = (still ? 0 : it.side * (3 + 13 * Math.abs(s))) + it.spin + it.hx * 6;
+      var rotX = s * 10 - it.hy * 4;
+      var scale = 1 - Math.abs(s) * 0.06;
+      it.el.style.transform = 'perspective(1600px) rotateY(' + rotY.toFixed(2) + 'deg) rotateX(' +
+        rotX.toFixed(2) + 'deg) scale(' + scale.toFixed(4) + ')';
+    }
+
+    function step(it, time) {
+      it.raf = 0;
+      var dt = it.last ? Math.min(0.05, (time - it.last) / 1000) : 1 / 60;
+      it.last = time;
+      if (!it.dragging) {
+        // A light spring returns the spin to rest, with a small, settled overshoot
+        it.vel += (-90 * it.spin - 14 * it.vel) * dt;
+        it.spin += it.vel * dt;
+      }
+      var k = 1 - Math.exp(-dt * 8);
+      it.hx += (it.tx - it.hx) * k;
+      it.hy += (it.ty - it.hy) * k;
+      render(it);
+      var moving = it.dragging || Math.abs(it.spin) > 0.05 || Math.abs(it.vel) > 0.05 ||
+        Math.abs(it.tx - it.hx) + Math.abs(it.ty - it.hy) > 0.002;
+      if (moving) it.raf = window.requestAnimationFrame(function (t) { step(it, t); });
+      else it.last = 0;
+    }
+    function kick(it) { if (!it.raf) it.raf = window.requestAnimationFrame(function (t) { step(it, t); }); }
+
+    items.forEach(function (it) {
+      var el = it.el;
+      el.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        it.dragging = true;
+        it.lastX = e.clientX;
+        it.vel = 0;
+        el.classList.add('is-dragging');
+        if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
+        kick(it);
+      });
+      el.addEventListener('pointermove', function (e) {
+        if (it.dragging) {
+          var dx = e.clientX - it.lastX;
+          it.lastX = e.clientX;
+          it.spin = clamp(it.spin + dx * 0.35, -42, 42);
+          kick(it);
+        } else if (e.pointerType === 'mouse' && finePointer() && !reducedMotion()) {
+          var r = it.box.getBoundingClientRect();
+          it.tx = (e.clientX - r.left) / r.width - 0.5;
+          it.ty = (e.clientY - r.top) / r.height - 0.5;
+          kick(it);
+        }
+      });
+      function release() {
+        if (!it.dragging) return;
+        it.dragging = false;
+        el.classList.remove('is-dragging');
+        if (reducedMotion()) { it.spin = 0; it.vel = 0; render(it); return; }
+        kick(it);
+      }
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+      el.addEventListener('lostpointercapture', release);
+      el.addEventListener('pointerleave', function () { it.tx = 0; it.ty = 0; kick(it); });
+    });
+
+    // Only frames near the screen follow the scroll
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var it = items[frames.indexOf(entry.target)];
+          if (it) it.near = entry.isIntersecting;
+        });
+      }, { rootMargin: '25% 0px' });
+      frames.forEach(function (el) { io.observe(el); });
+    }
+    measureSides();
+    window.addEventListener('resize', measureSides);
+
+    onScroll(function (vh) {
+      var reads = items.map(function (it) {
+        if (!it.near) return null;
+        var r = it.box.getBoundingClientRect();
+        return clamp((r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2), -1, 1);
+      });
+      return function () {
+        items.forEach(function (it, i) {
+          if (reads[i] === null) return;
+          it.s = reads[i];
+          if (!it.raf) render(it);
+        });
+      };
+    });
+  }
+
+  /* ---------- Tiles lean toward a mouse pointer in 3D and settle back when it leaves. One listener
+     serves every [data-lean] element; bigger tiles lean less, so their far edge stays close to the page.
+     The tile's box is measured when the pointer arrives, so its own lean never feeds back. ---------- */
+  function initLean() {
+    if (!finePointerQuery) return;
+    var moving = [], current = null, box = null, raf = 0, last = 0;
+
+    function state(el) {
+      if (!el.leanState) el.leanState = { el: el, x: 0, y: 0, tx: 0, ty: 0, max: 4 };
+      return el.leanState;
+    }
+    function frame(time) {
+      raf = 0;
+      var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
+      last = time;
+      var k = 1 - Math.exp(-dt * 10);
+      moving = moving.filter(function (s) {
+        s.x += (s.tx - s.x) * k;
+        s.y += (s.ty - s.y) * k;
+        var settled = Math.abs(s.tx - s.x) + Math.abs(s.ty - s.y) < 0.001;
+        if (settled && !s.tx && !s.ty) { s.x = 0; s.y = 0; s.el.style.transform = ''; return false; }
+        s.el.style.transform = 'perspective(900px) rotateX(' + (-s.y * s.max).toFixed(2) + 'deg) rotateY(' + (s.x * s.max).toFixed(2) + 'deg)';
+        return !settled;
+      });
+      if (moving.length) raf = window.requestAnimationFrame(frame);
+      else last = 0;
+    }
+    function track(s) {
+      if (moving.indexOf(s) < 0) moving.push(s);
+      if (!raf) raf = window.requestAnimationFrame(frame);
+    }
+    function release(el) {
+      if (!el) return;
+      var s = state(el);
+      s.tx = 0; s.ty = 0;
+      track(s);
+    }
+
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !finePointer() || reducedMotion()) return;
+      var el = e.target.closest ? e.target.closest('[data-lean]') : null;
+      if (el !== current) { release(current); current = el; box = null; }
+      if (!el) return;
+      if (!box) box = el.getBoundingClientRect();
+      var s = state(el);
+      s.max = clamp(1100 / Math.max(box.width, box.height), 1.5, 6);
+      s.tx = clamp((e.clientX - box.left) / box.width - 0.5, -0.5, 0.5) * 2;
+      s.ty = clamp((e.clientY - box.top) / box.height - 0.5, -0.5, 0.5) * 2;
+      track(s);
+    }, { passive: true });
+    // A scroll moves the tile under a still pointer, so measure it again on the next move
+    window.addEventListener('scroll', function () { box = null; }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', function () { release(current); current = null; });
   }
 
   /* ---------- Copy email: progressive enhancement, shown only when the Clipboard API exists ---------- */
@@ -336,8 +621,8 @@
 
   /* ==========================================================================
      3D foundation (three.js)
-     three.js loads once, after the page itself has loaded, and both scenes
-     share it. Each scene gets a "stage": a renderer sized to its host, a
+     three.js loads once, after the page itself has loaded, and all three
+     scenes share it. Each scene gets a "stage": a renderer sized to its host, a
      render loop that stops off screen or in a background tab, DPR capped at 2.
      ========================================================================== */
   function webglAvailable() {
@@ -462,6 +747,64 @@
     return stage;
   }
 
+  /**
+   * Drag to turn a model: az and el are camera offsets in radians, within range, that coast after
+   * a flick and ease back to the framed view after a pause. A mouse over the model sets leanX and
+   * leanY (−1 to 1) so it can lean toward the pointer. Call step(dt, still) once per frame.
+   */
+  function dragToTurn(host, stage, range) {
+    var turn = { az: 0, el: 0, leanX: 0, leanY: 0 };
+    var on = false, x = 0, y = 0, vaz = 0, idle = 0, tx = 0, ty = 0;
+    host.addEventListener('pointerdown', function (e) {
+      on = true; x = e.clientX; y = e.clientY; vaz = 0; idle = 0;
+      host.classList.add('is-dragging');
+      if (host.setPointerCapture) host.setPointerCapture(e.pointerId);
+      stage.requestRender();
+    });
+    host.addEventListener('pointermove', function (e) {
+      if (on) {
+        vaz = -(e.clientX - x) * 0.006;
+        turn.az = clamp(turn.az + vaz, -range.az, range.az);
+        turn.el = clamp(turn.el + (e.clientY - y) * 0.004, range.down, range.up);
+        x = e.clientX; y = e.clientY;
+        stage.requestRender();
+      } else if (e.pointerType === 'mouse' && finePointer()) {
+        var r = host.getBoundingClientRect();
+        tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      }
+    });
+    function end() {
+      if (!on) return;
+      on = false;
+      host.classList.remove('is-dragging');
+      stage.requestRender();
+    }
+    host.addEventListener('pointerup', end);
+    host.addEventListener('pointercancel', end);
+    host.addEventListener('lostpointercapture', end);
+    host.addEventListener('pointerleave', function () { tx = 0; ty = 0; });
+
+    turn.moving = function () { return on || Math.abs(turn.az) + Math.abs(turn.el) > 0.001; };
+    turn.step = function (dt, still) {
+      if (on) {
+        idle = 0;
+      } else {
+        turn.az = clamp(turn.az + vaz, -range.az, range.az);
+        vaz *= Math.pow(0.9, dt * 60);
+        idle += dt;
+        if (idle > 3) {
+          var back = Math.exp(-dt * 2.2);
+          turn.az *= back; turn.el *= back;
+        }
+      }
+      var k = 1 - Math.exp(-dt * 3);
+      turn.leanX += ((still ? 0 : tx) - turn.leanX) * k;
+      turn.leanY += ((still ? 0 : ty) - turn.leanY) * k;
+    };
+    return turn;
+  }
+
   /** Round, anti-aliased points whose size is set in world units, so they shrink with distance. */
   var DOT_VERTEX = [
     'uniform float uTime;',
@@ -526,6 +869,36 @@
     '  float a = uBase + (1.0 - uBase) * c;',
     '  if (uFadeEnd > 0.0) a *= 1.0 - smoothstep(1.0 - uFadeEnd, 1.0, vU);',
     '  gl_FragColor = vec4(mix(uColor, uHot, c), a);',
+    '}'
+  ].join('\n');
+
+  /** Flat three-tone shading (top, lit side, shaded side) with optional corrugation ribs:
+      a technical-illustration look that needs no lights. Shared by the roadmap model and the yard. */
+  var FACE_VERTEX = [
+    'varying vec3 vN;',
+    'varying vec3 vL;',
+    'void main() {',
+    '  vN = normalize(mat3(modelMatrix) * normal);',
+    '  vL = position;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+    '}'
+  ].join('\n');
+  var FACE_FRAGMENT = [
+    'uniform vec3 uTop;',
+    'uniform vec3 uLit;',
+    'uniform vec3 uShade;',
+    'uniform float uOpacity;',
+    'uniform float uRibs;',
+    'varying vec3 vN;',
+    'varying vec3 vL;',
+    'void main() {',
+    '  vec3 n = normalize(vN);',
+    '  vec3 c = n.y > 0.55 ? uTop : (abs(n.z) >= abs(n.x) ? uLit : uShade);',
+    '  if (uRibs > 0.0 && abs(n.z) > 0.5) {',
+    '    float rib = abs(fract(vL.x * uRibs) - 0.5);',
+    '    c *= 0.93 + 0.16 * smoothstep(0.38, 0.5, rib);',
+    '  }',
+    '  gl_FragColor = vec4(c, uOpacity);',
     '}'
   ].join('\n');
 
@@ -933,8 +1306,10 @@
       });
     };
 
+    var placedLabels = [];
     stage.afterRender = function () {
       var w = stage.width, h = stage.height;
+      placedLabels.length = 0;
       keys.forEach(function (key, i) {
         var l = labels[i];
         // Facing = how directly the surface at the marker looks at the camera (the globe sits at the origin)
@@ -945,13 +1320,35 @@
         tmp.project(camera);
         var sx = (tmp.x * 0.5 + 0.5) * w;
         var sy = (-tmp.y * 0.5 + 0.5) * h;
-        var ox = PLACES[key].side === 'left' ? -(l.w + 10) : 10;
-        var lx = clamp(sx + ox, 2, w - l.w - 2); // keep labels inside the frame
-        setLabel(l, lx, sy - 11, facing > 0.28 && markers[key].shown > 0.6);
+        var left = PLACES[key].side === 'left';
+        var ly = sy - 11;
+        // Keep labels inside the frame; if one would cover a label already placed (close places such as
+        // Delhi and Lucknow), try the other side of its marker, and only then move it below
+        function at(onLeft) { return clamp(sx + (onLeft ? -(l.w + 10) : 10), 2, w - l.w - 2); }
+        function hits(x, y) {
+          return placedLabels.some(function (o) { return x < o.x + o.w + 3 && x + l.w + 3 > o.x && y < o.y + o.h + 3 && y + l.h + 3 > o.y; });
+        }
+        var lx = at(left);
+        var visible = facing > 0.28 && markers[key].shown > 0.6;
+        if (visible) {
+          // First clear spot nearest the marker: its own side, the other side, then just above, then just below
+          var step = l.h + 4;
+          var spots = [[at(left), ly], [at(!left), ly], [at(left), ly - step], [at(left), ly + step]];
+          var pick = spots[spots.length - 1];
+          for (var n = 0; n < spots.length; n++) {
+            var y = clamp(spots[n][1], 2, h - l.h - 2);
+            if (!hits(spots[n][0], y)) { pick = [spots[n][0], y]; break; }
+          }
+          lx = pick[0];
+          ly = clamp(pick[1], 2, h - l.h - 2);
+          placedLabels.push({ x: lx, y: ly, w: l.w, h: l.h });
+        }
+        setLabel(l, lx, ly, visible);
       });
     };
 
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { measureLabels(labels); });
+    // Labels are measured in the web font, so place them again once it has arrived
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { measureLabels(labels); stage.requestRender(); });
     stage.resize();
     measureHero();
     host.classList.add('is-ready');
@@ -1048,41 +1445,13 @@
         transparent: true, depthWrite: false
       });
     }
-    // Flat three-tone shading (top, lit side, shaded side): a technical-illustration look with no lights
-    var SOLID_VERTEX = [
-      'varying vec3 vN;',
-      'varying vec3 vL;',
-      'void main() {',
-      '  vN = normalize(mat3(modelMatrix) * normal);',
-      '  vL = position;',
-      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-      '}'
-    ].join('\n');
-    var SOLID_FRAGMENT = [
-      'uniform vec3 uTop;',
-      'uniform vec3 uLit;',
-      'uniform vec3 uShade;',
-      'uniform float uOpacity;',
-      'uniform float uRibs;',
-      'varying vec3 vN;',
-      'varying vec3 vL;',
-      'void main() {',
-      '  vec3 n = normalize(vN);',
-      '  vec3 c = n.y > 0.55 ? uTop : (abs(n.z) >= abs(n.x) ? uLit : uShade);',
-      '  if (uRibs > 0.0 && abs(n.z) > 0.5) {',
-      '    float rib = abs(fract(vL.x * uRibs) - 0.5);',
-      '    c *= 0.93 + 0.16 * smoothstep(0.38, 0.5, rib);',
-      '  }',
-      '  gl_FragColor = vec4(c, uOpacity);',
-      '}'
-    ].join('\n');
     function faceMaterial(top, lit, shade, ribs) {
       return new THREE.ShaderMaterial({
         uniforms: {
           uTop: { value: srgb(THREE, top) }, uLit: { value: srgb(THREE, lit) }, uShade: { value: srgb(THREE, shade) },
           uOpacity: { value: 0 }, uRibs: { value: ribs || 0 }
         },
-        vertexShader: SOLID_VERTEX, fragmentShader: SOLID_FRAGMENT,
+        vertexShader: FACE_VERTEX, fragmentShader: FACE_FRAGMENT,
         transparent: true
       });
     }
@@ -1395,38 +1764,7 @@
 
     // Drag to turn the model; it eases back to its framed view after a pause.
     // A mouse over the model makes it lean slightly toward the pointer.
-    var drag = { on: false, x: 0, y: 0, az: 0, el: 0, vaz: 0, idle: 0 };
-    var lean = { x: 0, y: 0, tx: 0, ty: 0 };
-    host.addEventListener('pointerdown', function (e) {
-      drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.vaz = 0; drag.idle = 0;
-      host.classList.add('is-dragging');
-      if (host.setPointerCapture) host.setPointerCapture(e.pointerId);
-      stage.requestRender();
-    });
-    host.addEventListener('pointermove', function (e) {
-      if (drag.on) {
-        var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        drag.x = e.clientX; drag.y = e.clientY;
-        drag.vaz = -dx * 0.006;
-        drag.az = clamp(drag.az + drag.vaz, -0.6, 0.6);
-        drag.el = clamp(drag.el + dy * 0.004, -0.2, 0.32);
-        stage.requestRender();
-      } else if (e.pointerType === 'mouse' && finePointer()) {
-        var r = host.getBoundingClientRect();
-        lean.tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-        lean.ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
-      }
-    });
-    function endDrag() {
-      if (!drag.on) return;
-      drag.on = false;
-      host.classList.remove('is-dragging');
-      stage.requestRender();
-    }
-    host.addEventListener('pointerup', endDrag);
-    host.addEventListener('pointercancel', endDrag);
-    host.addEventListener('lostpointercapture', endDrag);
-    host.addEventListener('pointerleave', function () { lean.tx = 0; lean.ty = 0; });
+    var turn = dragToTurn(host, stage, { az: 0.6, down: -0.2, up: 0.32 });
 
     // The intro starts once a third of the model is in view
     var playing = false, clock = 0;
@@ -1439,9 +1777,7 @@
       playing = true;
     }
 
-    stage.animating = function () {
-      return !reducedMotion() || drag.on || Math.abs(drag.az) + Math.abs(drag.el) > 0.001;
-    };
+    stage.animating = function () { return !reducedMotion() || turn.moving(); };
 
     var dir = new THREE.Vector3();
     stage.update = function (dt) {
@@ -1486,23 +1822,10 @@
       placeFlow(dt, !still && t > 2.4);
 
       // Camera: framed view, plus a slow sway, the pointer lean and any drag offset
-      if (!drag.on) {
-        drag.az = clamp(drag.az + drag.vaz, -0.6, 0.6);
-        drag.vaz *= Math.pow(0.9, dt * 60);
-        drag.idle += dt;
-        if (drag.idle > 3) {
-          var back = Math.exp(-dt * 2.2);
-          drag.az *= back; drag.el *= back;
-        }
-      } else {
-        drag.idle = 0;
-      }
-      var k2 = 1 - Math.exp(-dt * 3);
-      lean.x += ((still ? 0 : lean.tx) - lean.x) * k2;
-      lean.y += ((still ? 0 : lean.ty) - lean.y) * k2;
+      turn.step(dt, still);
       var sway = still ? 0 : 1;
-      var az = view.az + drag.az + lean.x * 0.035 + sway * 0.03 * Math.sin(t * 0.23);
-      var el = clamp(view.el + drag.el + lean.y * 0.02 + sway * 0.012 * Math.sin(t * 0.17), 8 * DEG, 70 * DEG);
+      var az = view.az + turn.az + turn.leanX * 0.035 + sway * 0.03 * Math.sin(t * 0.23);
+      var el = clamp(view.el + turn.el + turn.leanY * 0.02 + sway * 0.012 * Math.sin(t * 0.17), 8 * DEG, 70 * DEG);
       var dolly = 1 + 0.14 * (1 - easeOut(clamp(t / 2.8, 0, 1)));
       dir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
       camera.position.copy(view.target).addScaledVector(dir, view.dist * dolly);
@@ -1537,15 +1860,358 @@
     stage.requestRender();
   }
 
+  /* ==========================================================================
+     Container yard (three.js)
+     A gantry crane stacks one container per tool from the Skills list: SAP,
+     WMS, Excel, Power BI, Tableau, MySQL, Python and RPA. On wide screens the
+     section's scroll drives the crane while the yard stays pinned beside the
+     lists, and each tool in the list gains an amber marker as its container
+     lands; on narrow screens it plays once when it comes into view. Dragging
+     turns the yard, like the roadmap model. Under reduced motion the stack is
+     shown complete. The figcaption names the tools.
+     ========================================================================== */
+  var YARD_TOOLS = ['SAP', 'WMS', 'Excel', 'Power BI', 'Tableau', 'MySQL', 'Python', 'RPA'];
+
+  function initYard() {
+    var host = document.querySelector('[data-yard]');
+    if (!host) return;
+    if (!webglAvailable()) { host.classList.add('is-unavailable'); return; }
+    var started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      // The labels are painted in the page's typeface, so give it a moment to arrive first
+      var font = document.fonts && document.fonts.load
+        ? Promise.race([document.fonts.load('600 160px "Instrument Sans"'), new Promise(function (r) { window.setTimeout(r, 1500); })])
+        : Promise.resolve();
+      Promise.all([loadThree(), font]).then(function () { buildYard(host); }).catch(function (err) {
+        host.classList.add('is-unavailable');
+        warn('yard', err);
+      });
+    }
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) { io.disconnect(); start(); }
+      }, { rootMargin: '800px 0px' });
+      io.observe(host);
+    } else {
+      start();
+    }
+  }
+
+  function buildYard(host) {
+    var THREE = window.THREE;
+    var stage = createStage(host, 28);
+    var scene = stage.scene, camera = stage.camera;
+    var grid = host.closest('.skills') || host;
+    var toolList = document.querySelector('.tool-list');
+    var chips = toolList ? Array.prototype.slice.call(toolList.querySelectorAll('li')) : [];
+    var wide = window.matchMedia('(min-width: 1024px)');
+
+    var NAVY = 0x0E1B2E, NAVY_950 = 0x0A1524, NAVY_700 = 0x213650, SOFT = 0xB7C1CF, PAPER = 0xF5F4F0, ACCENT = 0xE5A53A;
+    // Container and label colours, alternating through the palette
+    var LIVERY = [[ACCENT, NAVY], [SOFT, NAVY], [PAPER, NAVY], [NAVY_700, PAPER],
+                  [SOFT, NAVY], [ACCENT, NAVY], [NAVY_700, PAPER], [PAPER, NAVY]];
+    // A 20 ft container's proportions (6.06 × 2.59 × 2.44 m)
+    var L = 1.5, H = 0.64, W = 0.6, GAP = 0.06;
+    var STACK_X = -1.25, PICK_X = 1.95, LEG_X = 3.15, LEG_Z = 0.62, LEG_H = 3.9;
+    var TRUCK_Y = 0.42 + H / 2;                        // container centre on the truck
+    var CARRY_Y = 4 * (H + 0.02) + H / 2 + 0.18;       // container centre while carried over the stack
+    var REST_Y = LEG_H - 0.5;                           // spreader height when idle
+    var GRIP = H / 2 + 0.035;                           // spreader sits this far above a held container's centre
+
+    var world = new THREE.Group();
+    scene.add(world);
+
+    function face(hex, ribs) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTop: { value: srgb(THREE, mixHex(hex, 0xFFFFFF, 0.14)) },
+          uLit: { value: srgb(THREE, hex) },
+          uShade: { value: srgb(THREE, mixHex(hex, NAVY, 0.34)) },
+          uOpacity: { value: 1 },
+          uRibs: { value: ribs || 0 }
+        },
+        vertexShader: FACE_VERTEX,
+        fragmentShader: FACE_FRAGMENT
+      });
+    }
+    function block(w, h, d, x, y, z, mat) {
+      var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z);
+      world.add(m);
+      return m;
+    }
+    function pad(w, d, x) {
+      var m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: mixHex(NAVY, NAVY_950, 0.9) }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, 0.001, 0);
+      world.add(m);
+    }
+
+    // Quay: a faint dot grid, with darker pads under the stack and the truck lane
+    var dots = [];
+    for (var gx = -4.4; gx <= 4.41; gx += 0.3) {
+      for (var gz = -2.1; gz <= 2.11; gz += 0.3) dots.push(gx, 0, gz);
+    }
+    var count = dots.length / 3;
+    var dotGeo = new THREE.BufferGeometry();
+    dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dots, 3));
+    dotGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(new Array(count).fill(0), 1));
+    dotGeo.setAttribute('aShade', new THREE.Float32BufferAttribute(new Array(count).fill(1), 1));
+    dotGeo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(new Array(count).fill(1), 1));
+    var dotUniforms = {
+      uTime: { value: 100 }, uSize: { value: 0.02 }, uHalfHeight: { value: 300 }, uRise: { value: 0 },
+      uColor: { value: srgb(THREE, mixHex(NAVY, SOFT, 0.2)) }, uOpacity: { value: 1 }
+    };
+    world.add(new THREE.Points(dotGeo, new THREE.ShaderMaterial({
+      uniforms: dotUniforms, vertexShader: DOT_VERTEX, fragmentShader: DOT_FRAGMENT, transparent: true, depthWrite: false
+    })));
+    pad(L * 2 + GAP + 0.36, W + 0.5, STACK_X);
+    pad(L + 0.6, W + 0.5, PICK_X);
+
+    // Gantry crane: two portal frames joined by girders. The moving parts, trolley and spreader, are amber.
+    var steel = face(mixHex(NAVY_700, SOFT, 0.4));
+    [-1, 1].forEach(function (sx) {
+      [-1, 1].forEach(function (sz) { block(0.14, LEG_H, 0.14, sx * LEG_X, LEG_H / 2, sz * LEG_Z, steel); });
+      block(0.18, 0.12, LEG_Z * 2 + 0.2, sx * LEG_X, 0.06, 0, steel);
+      block(0.18, 0.18, LEG_Z * 2 + 0.2, sx * LEG_X, LEG_H, 0, steel);
+    });
+    [-1, 1].forEach(function (sz) { block(LEG_X * 2 + 0.34, 0.2, 0.14, 0, LEG_H + 0.02, sz * LEG_Z, steel); });
+    var amber = face(ACCENT);
+    var trolley = block(0.6, 0.22, LEG_Z * 2 + 0.34, PICK_X, LEG_H + 0.22, 0, amber);
+    var spreader = block(L * 0.96, 0.07, W * 0.96, PICK_X, REST_Y, 0, amber);
+    var cablePos = new Float32Array(12);
+    var cableGeo = new THREE.BufferGeometry();
+    cableGeo.setAttribute('position', new THREE.BufferAttribute(cablePos, 3));
+    var cables = new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: mixHex(NAVY, SOFT, 0.65) }));
+    cables.frustumCulled = false;
+    world.add(cables);
+
+    // Truck chassis on the lane, where each container arrives
+    var chassis = face(mixHex(NAVY_950, NAVY_700, 0.5));
+    block(L + 0.24, 0.12, W + 0.04, PICK_X, 0.34, 0, chassis);
+    [-0.52, 0, 0.52].forEach(function (dx) {
+      [-1, 1].forEach(function (sz) { block(0.24, 0.24, 0.08, PICK_X + dx, 0.14, sz * (W / 2 - 0.02), chassis); });
+    });
+
+    // Containers, each painted with its tool's name in the page's typeface
+    var labelW = L * 0.84, labelH = H * 0.6;
+    function labelTexture(text, ink) {
+      var c = document.createElement('canvas');
+      c.width = 1024;
+      c.height = Math.round(1024 * labelH / labelW);
+      var ctx = c.getContext('2d');
+      var family = '"Instrument Sans", "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
+      var size = Math.round(c.height * 0.62);
+      ctx.font = '600 ' + size + 'px ' + family;
+      while (ctx.measureText(text).width > c.width * 0.9 && size > 40) {
+        size -= 6;
+        ctx.font = '600 ' + size + 'px ' + family;
+      }
+      ctx.fillStyle = '#' + ('00000' + ink.toString(16)).slice(-6);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, c.width / 2, c.height / 2 + size * 0.04);
+      var tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = Math.min(8, stage.renderer.capabilities.getMaxAnisotropy());
+      return tex;
+    }
+    var boxGeo = new THREE.BoxGeometry(L, H, W);
+    var edgeGeo = new THREE.EdgesGeometry(boxGeo, 20);
+    var labelGeo = new THREE.PlaneGeometry(labelW, labelH);
+    var containers = YARD_TOOLS.map(function (name, i) {
+      var livery = LIVERY[i];
+      var mesh = new THREE.Mesh(boxGeo, face(livery[0], 16));
+      mesh.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: mixHex(livery[0], NAVY, 0.6) })));
+      var label = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
+        map: labelTexture(name, livery[1]), transparent: true, depthWrite: false
+      }));
+      label.position.z = W / 2 + 0.004;
+      mesh.add(label);
+      mesh.visible = false;
+      world.add(mesh);
+      var col = i % 2, tier = Math.floor(i / 2);
+      return { mesh: mesh, x: STACK_X + (col - 0.5) * (L + GAP), y: H / 2 + tier * (H + 0.02) };
+    });
+
+    // One lift per container: arrive on the truck, spreader down, lift, carry, lower into the slot,
+    // release and return. p runs 0 → 1 across all eight; returns how many have landed.
+    function phase(u, a, b) { return easeInOut(clamp((u - a) / (b - a), 0, 1)); }
+    function pose(p) {
+      var sx = PICK_X, sy = REST_Y, placed = 0, n = containers.length;
+      containers.forEach(function (ct, i) {
+        var u = clamp(p * n - i, 0, 1);
+        if (u <= 0) { ct.mesh.visible = false; return; }
+        ct.mesh.visible = true;
+        var x, y;
+        if (u < 0.26) {
+          x = lerp(PICK_X + 4.2, PICK_X, phase(u, 0, 0.14));
+          y = TRUCK_Y;
+        } else {
+          var travel = phase(u, 0.4, 0.66);
+          x = lerp(PICK_X, ct.x, travel);
+          y = travel < 1 ? lerp(TRUCK_Y, CARRY_Y, phase(u, 0.26, 0.4)) : lerp(CARRY_Y, ct.y, phase(u, 0.66, 0.86));
+        }
+        ct.mesh.position.set(x, y, 0);
+        if (u >= 0.86) placed++;
+        if (u < 1) {
+          // This container is on the hook, so the spreader follows it
+          if (u < 0.14) { sx = PICK_X; sy = REST_Y; }
+          else if (u < 0.26) { sx = PICK_X; sy = lerp(REST_Y, TRUCK_Y + GRIP, phase(u, 0.14, 0.26)); }
+          else if (u < 0.86) { sx = x; sy = y + GRIP; }
+          else { sx = lerp(ct.x, PICK_X, phase(u, 0.93, 1)); sy = lerp(ct.y + GRIP, REST_Y, phase(u, 0.86, 0.93)); }
+        }
+      });
+      spreader.position.set(sx, sy, 0);
+      trolley.position.x = sx;
+      var top = LEG_H + 0.1, bottom = sy + 0.035;
+      cablePos[0] = sx; cablePos[1] = top; cablePos[2] = -0.2;
+      cablePos[3] = sx; cablePos[4] = bottom; cablePos[5] = -0.2;
+      cablePos[6] = sx; cablePos[7] = top; cablePos[8] = 0.2;
+      cablePos[9] = sx; cablePos[10] = bottom; cablePos[11] = 0.2;
+      cableGeo.attributes.position.needsUpdate = true;
+      return placed;
+    }
+
+    // Camera: a low three-quarter view from the lane side, framed to the stage's shape
+    var view = { az: 0, el: 0, dist: 12, target: new THREE.Vector3() };
+    var fitPoints = [];
+    [-LEG_X - 0.2, LEG_X + 0.2].forEach(function (x) {
+      [0, LEG_H + 0.35].forEach(function (y) {
+        [-LEG_Z - 0.3, LEG_Z + 0.3].forEach(function (z) { fitPoints.push(new THREE.Vector3(x, y, z)); });
+      });
+    });
+    function frameView(aspect) {
+      var t = clamp((aspect - 0.8) / 0.8, 0, 1);
+      view.az = lerp(20, 30, t) * DEG;
+      view.el = lerp(15, 11, t) * DEG;
+      var dir = new THREE.Vector3(Math.sin(view.az) * Math.cos(view.el), Math.sin(view.el), Math.cos(view.az) * Math.cos(view.el));
+      var target = new THREE.Vector3(0, LEG_H / 2, 0), dist = 12, v = new THREE.Vector3();
+      var right = new THREE.Vector3(), up = new THREE.Vector3();
+      for (var it = 0; it < 10; it++) {
+        camera.position.copy(target).addScaledVector(dir, dist);
+        camera.lookAt(target);
+        camera.updateMatrixWorld();
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        fitPoints.forEach(function (p) {
+          v.copy(p).project(camera);
+          minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+          minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+        });
+        var halfH = dist * Math.tan(camera.fov * DEG / 2), halfW = halfH * camera.aspect;
+        right.setFromMatrixColumn(camera.matrixWorld, 0);
+        up.setFromMatrixColumn(camera.matrixWorld, 1);
+        target.addScaledVector(right, (minX + maxX) / 2 * halfW);
+        target.addScaledVector(up, (minY + maxY) / 2 * halfH);
+        dist *= Math.max((maxX - minX) / 2 / 0.9, (maxY - minY) / 2 / 0.86);
+      }
+      view.dist = dist;
+      view.target.copy(target);
+    }
+
+    // Wide screens: progress follows the scroll, from the yard sitting 55% down the screen until
+    // the foot of the lists reaches the bottom of the screen, so all eight land while the list is read
+    var metrics = { gridTop: 0, gridH: 1 };
+    function measure() {
+      var gr = grid.getBoundingClientRect();
+      metrics.gridTop = gr.top + window.scrollY;
+      metrics.gridH = gr.height;
+    }
+    function scrollTarget(vh) {
+      var s0 = metrics.gridTop - vh * 0.55;
+      var s1 = metrics.gridTop + metrics.gridH - vh * 1.02;
+      if (s1 - s0 < 320) s1 = s0 + 320;
+      return clamp((window.scrollY - s0) / (s1 - s0), 0, 1);
+    }
+    var target = 0, shown = 0, playing = false, landed = -1, clock = 0;
+    function markTools(placed) {
+      if (placed === landed) return;
+      landed = placed;
+      if (!reducedMotion()) chips.forEach(function (chip, i) { chip.classList.toggle('is-stacked', i < placed); });
+    }
+    function landedAt(p) { return clamp(Math.floor(p * containers.length - 0.86) + 1, 0, containers.length); }
+    onScroll(function (vh) {
+      if (!wide.matches) return null;
+      var t = scrollTarget(vh);
+      // Measured in this frame: the visibility observer can lag a fast scroll by a frame
+      var r = host.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < vh) {
+        if (t === target) return null;
+        return function () { target = t; stage.requestRender(); };
+      }
+      // Off screen there is nothing to watch: settle on the scroll's state and keep the list in step,
+      // even if the eased stack was still catching up when the yard left the screen
+      if (t === target && shown === t) return null;
+      return function () { target = t; shown = t; markTools(landedAt(t)); };
+    });
+    // Narrow screens: play once when a third of the yard is in view
+    if ('IntersectionObserver' in window) {
+      var seen = new IntersectionObserver(function (entries) {
+        if (entries[0].intersectionRatio >= 0.35) { playing = true; seen.disconnect(); stage.requestRender(); }
+      }, { threshold: [0, 0.35, 0.7] });
+      seen.observe(host);
+    } else {
+      playing = true;
+    }
+    if (toolList && !reducedMotion()) toolList.classList.add('is-linked');
+
+    // Drag to turn the yard; it eases back to its framed view after a pause
+    var turn = dragToTurn(host, stage, { az: 0.4, down: -0.05, up: 0.12 });
+
+    stage.onResize = function (w, h) {
+      frameView(w / h);
+      dotUniforms.uHalfHeight.value = h * stage.pixelRatio / 2;
+      measure();
+    };
+    window.addEventListener('resize', measure);
+    window.addEventListener('load', measure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+
+    stage.animating = function () { return !reducedMotion() || turn.moving(); };
+    var dir = new THREE.Vector3();
+    stage.update = function (dt) {
+      var still = reducedMotion();
+      clock += dt;
+      if (still) shown = 1;
+      else if (wide.matches) shown += (target - shown) * (1 - Math.exp(-dt * 5));
+      else if (playing) shown = Math.min(1, shown + dt / 9);
+      markTools(pose(shown));
+      // The view turns a little as the stack grows, with a slow sway, the pointer lean and any
+      // drag offset. While turned it pulls back a little so the gantry stays in frame.
+      turn.step(dt, still);
+      var sway = still ? 0 : 1;
+      var az = view.az + shown * 0.12 + turn.az + turn.leanX * 0.03 + sway * 0.025 * Math.sin(clock * 0.21);
+      var el = view.el + turn.el + turn.leanY * 0.015 + sway * 0.01 * Math.sin(clock * 0.15);
+      var pull = 1 + 0.3 * Math.abs(turn.az) + Math.max(0, turn.el);
+      dir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      camera.position.copy(view.target).addScaledVector(dir, view.dist * pull);
+      camera.lookAt(view.target);
+    };
+
+    measure();
+    stage.resize();
+    host.classList.add('is-ready');
+    stage.requestRender();
+  }
+
   /* ---------- Boot ---------- */
   safely('header', initHeader);
   safely('menu', initMenu);
   safely('scroll spy', initScrollSpy);
+  safely('split text', initSplitText);
   safely('reveal', initReveal);
   safely('counters', initCounters);
-  safely('tilt', initTilt);
+  safely('progress', initProgress);
+  safely('word light', initWordLight);
+  safely('spine', initSpine);
+  safely('float windows', initFloatWindows);
+  safely('showcase', initShowcase);
+  safely('lean', initLean);
   safely('copy', initCopy);
   safely('year', initYear);
   safely('globe', initGlobe);
   safely('roadmap', initRoadmap);
+  safely('yard', initYard);
 })();

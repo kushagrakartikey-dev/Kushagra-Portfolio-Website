@@ -5,8 +5,8 @@ This folder already contains everything Antigravity's agent needs to understand,
 | File | What Antigravity does with it |
 | --- | --- |
 | `AGENTS.md` | Read automatically when you open the folder: the project brief and status |
-| `.agents/rules/01-content-accuracy.md` | Always-on rule: your decisions (no CGPA, no Lucknow University, no badminton or competitions, no headshot, no NutriCircle) and every verified fact, metric and link |
-| `.agents/rules/02-design-system.md` | Always-on rule: colours, type, layout, motion and the two three.js scenes (globe, roadmap model) |
+| `.agents/rules/01-content-accuracy.md` | Always-on rule: your decisions (no CGPA, no Lucknow University, no badminton or competitions, no headshot, no NutriCircle; DHL and BWF names and logos; minimal text) and every verified fact, metric and link |
+| `.agents/rules/02-design-system.md` | Always-on rule: the dark theme, type, layout, result graphics, motion and the three three.js scenes (globe, roadmap model, container yard) |
 | `.agents/rules/03-quality-gates.md` | Always-on rule: accessibility, performance and the test checklist |
 | `.agents/workflows/add-project-card.md` | Run with `/add-project-card` |
 | `.agents/workflows/qa-and-publish.md` | Run with `/qa-and-publish` |
@@ -25,7 +25,7 @@ This folder already contains everything Antigravity's agent needs to understand,
 
 ## Path A: continue the finished site (recommended)
 
-The 3D site is already built and tested, and the fifth project card is done. Paste these prompts into the agent panel one at a time and review each result before moving on.
+The 3D site is built, tested and published, and the fifth project is done. Paste these prompts into the agent panel one at a time and review each result before moving on.
 
 **Prompt 1: orientation**
 
@@ -39,7 +39,7 @@ Read AGENTS.md, every file in .agents/rules/, and look at the screenshots in .ag
 /qa-and-publish
 ```
 
-The agent will stop and ask before it creates the GitHub repository or pushes. Tell it the repository name you want. `kushagrakartikey-dev.github.io` gives the shortest address.
+The site is published from the repository `kushagrakartikey-dev/Kushagra-Portfolio-Website`. The agent will stop and ask before it pushes.
 
 ## Path B: rebuild everything from scratch
 

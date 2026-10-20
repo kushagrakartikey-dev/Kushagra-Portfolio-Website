@@ -1,5 +1,5 @@
 ---
-description: Rebuild the complete Kushagra Kartikey portfolio from scratch (static HTML/CSS/JS + two three.js scenes), phase by phase, matching the approved reference screenshots.
+description: Rebuild the complete Kushagra Kartikey portfolio from scratch (static HTML/CSS/JS + three three.js scenes), phase by phase, matching the approved reference screenshots.
 ---
 
 # /rebuild-portfolio
@@ -21,7 +21,8 @@ Act as senior frontend engineer, UI/UX designer, accessibility specialist, perfo
 3. **Land mask.** Run `pip install global-land-mask`. Load `globe_combined_mask_compressed.npz`, whose `mask` array is True for water, with row 0 at 90°N and column 0 at 180°W. Downsample it to 240×120 by block mean, treating a cell as land when its water fraction is below 0.35. Invert it so 1 means land, then `numpy.packbits` it row by row and base64 encode the result (about 4,800 characters). Paste the string into `script.js` as `LAND_MASK`.
 4. **Project screenshots.** Open each live dashboard at 1440×900, wait for the charts to render, and capture the first screen. Crop to 16:10 from the top-left. Save each as WebP at 1200 and 640 pixels wide, named `assets/images/project-<sop|sourcing|procurement|lean-six-sigma>-<width>.webp`. If the procurement dashboard does not load, use `docs/images/dashboard_compliance.png` from its repository instead.
 5. **Favicon.** Make `assets/icons/favicon.svg`: a navy rounded square with "KK" in off-white and a short amber bar.
-6. **Resume.** Use the owner's own PDF if they provide one. Otherwise typeset a two-page A4 PDF from the resume text, applying the exclusions in rule 01 (no CGPA, no Lucknow University, no badminton or competitions, no Lovable link). Print it with headless Chromium to `assets/documents/resume.pdf`, then ask the owner to review it.
+6. **Logos.** Save the official DHL, Decathlon and BWF logos as served on each organisation's own website (dhl.com's header `dhl-logo.svg`, decathlon.in's header logo, bwfbadminton.com's `logo-bwf-rgb.svg`) to `assets/logos/dhl.svg`, `decathlon.svg` and `bwf.svg`. Use them unaltered: strip only scripts or tracking attributes, and check they contain no `<script>` or event handlers.
+7. **Resume.** Use the owner's own PDF if they provide one. Otherwise typeset a two-page A4 PDF from the resume text, applying the exclusions in rule 01 (no CGPA, no Lucknow University, no badminton or competitions, no Lovable link). Print it with headless Chromium to `assets/documents/resume.pdf`, then ask the owner to review it.
 
 ## Phase 3 — Build `index.html`
 
@@ -36,21 +37,23 @@ Build the sections and ids in the order set by rule 02.
 - an inline script that swaps the class `no-js` for `js` on `<html>` before first paint.
 
 **Copy to use:**
-- **Value statement:** "I run supply chain operations and analyse cost, cash and capacity to decide what changes, then measure each change by its result."
+- **Value statement:** "I run supply chain operations and measure every change by its result."
 - **About statement:** "Two years across store-level retail operations and international trade consulting, measured in stock availability, margin and cash."
-- **Contact invitation:** "Recruiters, consulting teams, clients and partners: if you are working on planning, sourcing, inventory or trade operations, I would like to hear about it."
+- **Contact invitation:** "Working on planning, sourcing, inventory or trade operations? I would like to hear about it."
 
-Write all other copy in plain, confident professional English. Use no filler adjectives, and keep every sentence to facts from rule 01.
+Write all other copy in plain, confident professional English, and as little of it as the facts allow (rule 01, minimal text): one line per role summary and per project, results as figures with short labels. Use no filler adjectives, and keep every sentence to facts from rule 01.
 
 ## Phase 4 — Build `styles.css`
 
-Order: font-face, tokens, base, layout helpers, navigation, buttons, hero, globe and ledger, about, experience, projects, skills, strategy, education, contact, footer, motion, responsive, print.
+Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels), navigation and progress line, buttons, hero (globe, floating windows, ledger), about (focus tiles), experience (spine, metric tiles and their graphics, roadmap), projects showcase, skills and yard, strategy cards, education cards, contact, footer, motion, responsive, print. One dark theme: the page ground is `--navy-950`, tiles `--navy-900`.
 
 Breakpoints:
 - 1100px: navigation collapses to the menu button;
-- 1024px: hero stacks; ledger, about and contact become one column;
-- 900px: projects, themes and the role grid become one column;
-- 600px: full-width hero buttons, one-column skills, sectors and contact tiles.
+- 1024px: hero stacks; ledger, about and contact become one column; the yard moves between the Skills title and the lists, and stops being sticky;
+- 900px: project rows, themes and the role grid become one column;
+- 600px: full-width hero buttons, one-column skills, sectors and contact tiles; only one hero window.
+
+Any grid track that holds unbreakable text (the showcase address bar) is `minmax(0, 1fr)`, never a bare `1fr`.
 
 Two anchor-offset rules:
 - `html { scroll-padding-top: calc(var(--nav-h) + 1rem) }`;
@@ -63,13 +66,22 @@ Write one IIFE in `'use strict'` mode. Wrap each module in `safely(name, fn)` so
 1. **header** — adds `.is-scrolled`.
 2. **menu** — as specified in rule 03.
 3. **scroll spy** — `aria-current="true"` on the nav link for the section in view.
-4. **reveal** — IntersectionObserver plus the scroll-settle failsafe.
-5. **counters** — ledger numbers count from their before value to after; skipped under reduced motion.
-6. **tilt** — mouse only, at most 4°, applied with `requestAnimationFrame`.
-7. **copy email** — shown only when the Clipboard API exists in a secure context; announces through a `role="status"` region.
-8. **year** — footer year.
-9. **globe** — as specified in rule 02.
-10. **roadmap** — the capacity-roadmap model, as specified in rule 02; built only as it approaches the screen.
+4. **split text** — splits the h2s and the footer name into words (letters for one-word headings), keeping a visually hidden full copy.
+5. **reveal** — IntersectionObserver plus the scroll-settle failsafe.
+6. **counters** — every `[data-count-to]` figure counts from its before value as it comes into view; skipped under reduced motion.
+7. **progress** — the header's reading-progress line.
+8. **word light** — lights the About statement word by word; skipped under reduced motion.
+9. **spine** — fills the timeline spine and marks each role as reached.
+10. **float windows** — the hero windows lean from a mouse pointer by depth.
+11. **showcase** — project frames straighten toward mid-screen, lean toward a mouse, spin when dragged and spring back.
+12. **lean** — `[data-lean]` tiles lean toward a mouse in 3D (fine pointers, motion allowed).
+13. **copy email** — shown only when the Clipboard API exists in a secure context; announces through a `role="status"` region.
+14. **year** — footer year.
+15. **globe** — as specified in rule 02.
+16. **roadmap** — the capacity-roadmap model, as specified in rule 02; built only as it approaches the screen.
+17. **yard** — the Skills container yard, as specified in rule 02; built only as it approaches the screen.
+
+Progress, word light, spine, showcase and yard share one scroll loop (`onScroll`): each reads layout and returns a write, and all reads run before any write in the same frame.
 
 ## Phase 6 — Test and refine
 
