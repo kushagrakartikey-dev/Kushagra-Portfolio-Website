@@ -1,0 +1,1551 @@
+/* ==========================================================================
+   Kushagra Kartikey — Portfolio scripts
+   Vanilla JavaScript, no build step. Every module is optional: if one fails,
+   the page content stays visible and the rest keeps working.
+   Modules: header, menu, scroll spy, reveal, counters, card tilt, copy email,
+   footer year, and two 3D scenes built with three.js (loaded lazily from
+   assets/vendor): the hero globe and the capacity-roadmap model.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  var motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
+
+  function reducedMotion() { return !!(motionQuery && motionQuery.matches); }
+  function finePointer() { return !!(finePointerQuery && finePointerQuery.matches); }
+
+  function warn(name, err) {
+    if (window.console && console.warn) console.warn('[portfolio] ' + name + ' disabled:', err);
+  }
+
+  /** Runs a module and contains any error so one failure never blocks the others. */
+  function safely(name, fn) {
+    try { fn(); } catch (err) { warn(name, err); }
+  }
+
+  /* ---------- Motion maths shared by the 3D scenes: the same curves as the CSS tokens ---------- */
+  var DEG = Math.PI / 180;
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function smoothstep(e0, e1, x) { var t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); }
+
+  /** cubic-bezier(x1, y1, x2, y2) as a function of progress, solved the way browsers do. */
+  function cubicBezier(x1, y1, x2, y2) {
+    var cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+    var cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    function curveX(t) { return ((ax * t + bx) * t + cx) * t; }
+    function curveY(t) { return ((ay * t + by) * t + cy) * t; }
+    function slopeX(t) { return (3 * ax * t + 2 * bx) * t + cx; }
+    function solveX(x) {
+      var t = x, i;
+      for (i = 0; i < 8; i++) {               // Newton–Raphson
+        var err = curveX(t) - x;
+        if (Math.abs(err) < 1e-6) return t;
+        var d = slopeX(t);
+        if (Math.abs(d) < 1e-6) break;
+        t -= err / d;
+      }
+      var lo = 0, hi = 1;                     // bisection fallback
+      t = x;
+      for (i = 0; i < 32; i++) {
+        var v = curveX(t);
+        if (Math.abs(v - x) < 1e-6) break;
+        if (v < x) lo = t; else hi = t;
+        t = (lo + hi) / 2;
+      }
+      return t;
+    }
+    return function (x) { return x <= 0 ? 0 : x >= 1 ? 1 : curveY(solveX(x)); };
+  }
+  var easeOut = cubicBezier(0.23, 1, 0.32, 1);     // --ease-out
+  var easeInOut = cubicBezier(0.77, 0, 0.175, 1);  // --ease-in-out
+  /** Lands with a small, settled overshoot (about 4%); used for markers, never for text. */
+  function easeOutBack(t) { var c = 1.1; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+
+  /** Small seeded random generator, so each 3D scene looks the same on every visit. */
+  function seeded(seed) {
+    return function () {
+      seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- Header: hairline appears once the page scrolls ---------- */
+  function initHeader() {
+    var header = document.querySelector('.site-header');
+    if (!header) return;
+    var ticking = false;
+    function update() {
+      header.classList.toggle('is-scrolled', window.scrollY > 8);
+      ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+  }
+
+  /* ---------- Mobile menu: aria-expanded, Escape, outside click, close on select ---------- */
+  function initMenu() {
+    var header = document.querySelector('.site-header');
+    var toggle = document.querySelector('.menu-toggle');
+    var menu = document.getElementById('site-menu');
+    if (!header || !toggle || !menu) return;
+
+    var label = toggle.querySelector('.menu-toggle__label');
+    var desktop = window.matchMedia('(min-width: 1100px)');
+
+    function setOpen(open, returnFocus) {
+      header.setAttribute('data-menu', open ? 'open' : 'closed');
+      toggle.setAttribute('aria-expanded', String(open));
+      if (label) label.textContent = open ? 'Close' : 'Menu';
+      if (!open && returnFocus) toggle.focus();
+    }
+    function isOpen() { return toggle.getAttribute('aria-expanded') === 'true'; }
+
+    toggle.addEventListener('click', function () {
+      var open = !isOpen();
+      setOpen(open, false);
+      if (open) {
+        var first = menu.querySelector('a');
+        if (first) first.focus({ preventScroll: true });
+      }
+    });
+
+    // Close after choosing a section (or the resume link)
+    menu.addEventListener('click', function (e) {
+      if (e.target.closest('a') && isOpen()) setOpen(false, false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen()) setOpen(false, true);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (isOpen() && !header.contains(e.target)) setOpen(false, false);
+    });
+
+    // Leaving the mobile layout resets the menu
+    var onChange = function (e) { if (e.matches) setOpen(false, false); };
+    if (desktop.addEventListener) desktop.addEventListener('change', onChange);
+    else if (desktop.addListener) desktop.addListener(onChange);
+  }
+
+  /* ---------- Scroll spy: marks the nav link of the section in view ---------- */
+  function initScrollSpy() {
+    if (!('IntersectionObserver' in window)) return;
+    var links = Array.prototype.slice.call(document.querySelectorAll('.nav-links a[href^="#"]'));
+    var map = {};
+    links.forEach(function (link) {
+      var id = link.getAttribute('href').slice(1);
+      var section = document.getElementById(id);
+      if (section) map[id] = { link: link, section: section };
+    });
+    var ids = Object.keys(map);
+    if (!ids.length) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (l) { l.removeAttribute('aria-current'); });
+        var hit = map[entry.target.id];
+        if (hit) hit.link.setAttribute('aria-current', 'true');
+      });
+    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+
+    ids.forEach(function (id) { observer.observe(map[id].section); });
+
+    // Above the first tracked section, nothing is current
+    var hero = document.getElementById('top');
+    if (hero) {
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting && entries[0].intersectionRatio > 0.5) {
+          links.forEach(function (l) { l.removeAttribute('aria-current'); });
+        }
+      }, { threshold: [0.5] }).observe(hero);
+    }
+  }
+
+  /* ---------- Scroll reveal: elements that arrive together rise in a short stagger, once ---------- */
+  function initReveal() {
+    var items = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (!items.length || !('IntersectionObserver' in window)) return; // content simply stays visible
+
+    function show(el, order) {
+      el.style.setProperty('--i', String(Math.min(order, 6)));
+      el.classList.add('is-visible');
+      // Cards drop their stagger once revealed, so the pointer tilt responds at once
+      if (el.classList.contains('project')) {
+        window.setTimeout(function () { el.classList.add('is-settled'); }, 1200);
+      }
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+      // Stagger only among the elements entering in this batch, top to bottom, left to right
+      var arriving = entries.filter(function (entry) { return entry.isIntersecting; });
+      arriving.sort(function (a, b) {
+        return (a.boundingClientRect.top - b.boundingClientRect.top) || (a.boundingClientRect.left - b.boundingClientRect.left);
+      });
+      arriving.forEach(function (entry, n) {
+        show(entry.target, n);
+        observer.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+    items.forEach(function (el) { observer.observe(el); });
+    root.classList.add('reveal-ready');
+
+    // Failsafe: after scrolling settles (or an anchor jump), reveal everything already reached,
+    // so a skipped observer callback can never leave content hidden.
+    var settleTimer = 0;
+    function revealReached() {
+      var limit = window.innerHeight;
+      items.forEach(function (el) {
+        if (!el.classList.contains('is-visible') && el.getBoundingClientRect().top < limit) {
+          show(el, 0);
+          observer.unobserve(el);
+        }
+      });
+    }
+    window.addEventListener('scroll', function () {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(revealReached, 150);
+    }, { passive: true });
+    window.addEventListener('hashchange', function () { window.setTimeout(revealReached, 50); });
+    window.setTimeout(revealReached, 400);
+
+    // Printing should never leave content hidden
+    window.addEventListener('beforeprint', function () { items.forEach(function (el) { show(el, 0); }); });
+  }
+
+  /* ---------- Ledger counters: count from the "before" reading to the result ---------- */
+  function initCounters() {
+    if (reducedMotion()) return; // final values are already in the HTML
+    var nodes = document.querySelectorAll('[data-count-to]');
+    var duration = 1400, delay = 600;
+
+    Array.prototype.forEach.call(nodes, function (node) {
+      var from = parseFloat(node.getAttribute('data-count-from'));
+      var to = parseFloat(node.getAttribute('data-count-to'));
+      var decimals = parseInt(node.getAttribute('data-decimals') || '0', 10);
+      var finalText = node.textContent;
+      if (isNaN(from) || isNaN(to)) return;
+
+      node.textContent = from.toFixed(decimals);
+      var start = null;
+      function frame(now) {
+        if (start === null) start = now + delay;
+        var t = Math.min(Math.max((now - start) / duration, 0), 1);
+        node.textContent = (from + (to - from) * easeInOut(t)).toFixed(decimals);
+        if (t < 1) window.requestAnimationFrame(frame);
+        else node.textContent = finalText;
+      }
+      window.requestAnimationFrame(frame);
+    });
+  }
+
+  /* ---------- Project cards: 3D tilt toward the pointer, with the screenshot drifting the other way (mouse only) ---------- */
+  function initTilt() {
+    var cards = document.querySelectorAll('[data-tilt]');
+    var maxTilt = 4; // degrees
+
+    Array.prototype.forEach.call(cards, function (card) {
+      var img = card.querySelector('.project__media img');
+      var raf = 0, last = 0, hovering = false, gain = 1;
+      var target = { x: 0, y: 0, lift: 0 }, now = { x: 0, y: 0, lift: 0 };
+
+      // Eases toward the pointer like a light spring, then hands the card back to CSS once at rest
+      function frame(time) {
+        raf = 0;
+        var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
+        last = time;
+        var k = 1 - Math.exp(-dt * 10);
+        now.x += (target.x - now.x) * k;
+        now.y += (target.y - now.y) * k;
+        now.lift += (target.lift - now.lift) * k;
+        if (!hovering && Math.abs(now.x) + Math.abs(now.y) + now.lift < 0.002) {
+          card.classList.remove('is-tilting');
+          card.style.transform = '';
+          if (img) img.style.transform = '';
+          last = 0;
+          return;
+        }
+        card.style.transform = 'perspective(1400px) rotateX(' + (-now.y * maxTilt * gain).toFixed(3) + 'deg) rotateY(' +
+          (now.x * maxTilt * gain).toFixed(3) + 'deg) translate3d(0, ' + (-4 * now.lift).toFixed(2) + 'px, 0)';
+        if (img) {
+          img.style.transform = 'scale(' + (1 + 0.05 * now.lift).toFixed(4) + ') translate3d(' +
+            (-now.x * 14).toFixed(2) + 'px, ' + (-now.y * 10).toFixed(2) + 'px, 0)';
+        }
+        raf = window.requestAnimationFrame(frame);
+      }
+      function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
+
+      card.addEventListener('pointerenter', function (e) {
+        if (e.pointerType !== 'mouse' || !finePointer() || reducedMotion()) return;
+        // Wait until the card has finished its entrance
+        if (root.classList.contains('reveal-ready') && !card.classList.contains('is-settled')) return;
+        hovering = true;
+        gain = Math.min(1, 640 / Math.max(1, card.offsetWidth)); // wide cards tilt less
+        target.lift = 1;
+        card.classList.add('is-tilting');
+        kick();
+      });
+      card.addEventListener('pointermove', function (e) {
+        if (!hovering) return;
+        var rect = card.getBoundingClientRect();
+        target.x = (e.clientX - rect.left) / rect.width - 0.5;
+        target.y = (e.clientY - rect.top) / rect.height - 0.5;
+        kick();
+      });
+      card.addEventListener('pointerleave', function () {
+        if (!hovering) return;
+        hovering = false;
+        target.x = 0; target.y = 0; target.lift = 0;
+        kick();
+      });
+    });
+  }
+
+  /* ---------- Copy email: progressive enhancement, shown only when the Clipboard API exists ---------- */
+  function initCopy() {
+    var btn = document.querySelector('[data-copy]');
+    var status = document.querySelector('.copy-status');
+    if (!btn || !navigator.clipboard || !window.isSecureContext) return;
+    btn.hidden = false;
+    var timer = 0;
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+        if (status) status.textContent = 'Email copied';
+      }, function () {
+        if (status) status.textContent = 'Copy failed. Select the address instead.';
+      }).then(function () {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(function () { if (status) status.textContent = ''; }, 2600);
+      });
+    });
+  }
+
+  function initYear() {
+    var el = document.querySelector('[data-year]');
+    if (el) el.textContent = String(new Date().getFullYear());
+  }
+
+  /* ==========================================================================
+     3D foundation (three.js)
+     three.js loads once, after the page itself has loaded, and both scenes
+     share it. Each scene gets a "stage": a renderer sized to its host, a
+     render loop that stops off screen or in a background tab, DPR capped at 2.
+     ========================================================================== */
+  function webglAvailable() {
+    try {
+      var c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    } catch (e) { return false; }
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error('Could not load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  var threeReady = null;
+  /** Loads three.js after window load, in idle time, so it never delays first paint. */
+  function loadThree() {
+    if (!threeReady) {
+      threeReady = new Promise(function (resolve, reject) {
+        function start() {
+          if (window.THREE) { resolve(window.THREE); return; }
+          loadScript('assets/vendor/three.min.js').then(function () {
+            if (window.THREE) resolve(window.THREE);
+            else reject(new Error('three.js unavailable'));
+          }, reject);
+        }
+        function schedule() {
+          if ('requestIdleCallback' in window) window.requestIdleCallback(start, { timeout: 1200 });
+          else window.setTimeout(start, 200);
+        }
+        if (document.readyState === 'complete') schedule();
+        else window.addEventListener('load', schedule, { once: true });
+      });
+    }
+    return threeReady;
+  }
+
+  /** sRGB colour as a shader vector. Custom shaders write it unconverted, so it renders exactly as the hex. */
+  function srgb(THREE, hex) {
+    return new THREE.Vector3(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
+  }
+  /** Mixes two hex colours: used to derive tone steps from the design tokens. */
+  function mixHex(a, b, t) {
+    function ch(c, s) { return (c >> s) & 255; }
+    function m(s) { return Math.round(lerp(ch(a, s), ch(b, s), t)); }
+    return (m(16) << 16) | (m(8) << 8) | m(0);
+  }
+
+  function createStage(host, fov) {
+    var THREE = window.THREE;
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+    var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setClearColor(0x000000, 0);
+    host.insertBefore(renderer.domElement, host.firstChild);
+
+    var stage = {
+      renderer: renderer,
+      scene: new THREE.Scene(),
+      camera: new THREE.PerspectiveCamera(fov, 1, 0.1, 100),
+      pixelRatio: pixelRatio,
+      width: 0,
+      height: 0,
+      onScreen: true,
+      update: null,       // (dt) → advance the scene
+      afterRender: null,  // → position HTML labels
+      onResize: null,     // (width, height)
+      animating: function () { return true; }
+    };
+    var rafId = 0, last = 0, lost = false;
+
+    function frame(time) {
+      rafId = 0;
+      if (lost) return;
+      var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
+      last = time;
+      if (stage.update) stage.update(dt);
+      renderer.render(stage.scene, stage.camera);
+      if (stage.afterRender) stage.afterRender();
+      if (stage.animating() && stage.onScreen && !document.hidden) rafId = window.requestAnimationFrame(frame);
+      else last = 0;
+    }
+    stage.requestRender = function () {
+      if (!rafId && !lost && stage.onScreen && !document.hidden) rafId = window.requestAnimationFrame(frame);
+    };
+
+    stage.resize = function () {
+      var rect = host.getBoundingClientRect();
+      var w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
+      if (w === stage.width && h === stage.height) return;
+      stage.width = w;
+      stage.height = h;
+      renderer.setSize(w, h, false);
+      stage.camera.aspect = w / h;
+      stage.camera.updateProjectionMatrix();
+      if (stage.onResize) stage.onResize(w, h);
+      stage.requestRender();
+    };
+
+    // Render only while on screen and while the tab is visible
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        stage.onScreen = entries[0].isIntersecting;
+        if (stage.onScreen) stage.requestRender();
+      }).observe(host);
+    }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) stage.requestRender(); });
+    if (motionQuery && motionQuery.addEventListener) motionQuery.addEventListener('change', stage.requestRender);
+    if ('ResizeObserver' in window) new ResizeObserver(stage.resize).observe(host);
+    else window.addEventListener('resize', stage.resize);
+
+    renderer.domElement.addEventListener('webglcontextlost', function (e) {
+      e.preventDefault();
+      lost = true;
+      host.classList.add('is-unavailable');
+    });
+    return stage;
+  }
+
+  /** Round, anti-aliased points whose size is set in world units, so they shrink with distance. */
+  var DOT_VERTEX = [
+    'uniform float uTime;',
+    'uniform float uSize;',
+    'uniform float uHalfHeight;',
+    'uniform float uRise;',
+    'attribute float aDelay;',
+    'attribute float aShade;',
+    'attribute float aAlpha;',
+    'varying float vAlpha;',
+    'varying float vShade;',
+    'varying float vFeather;',
+    'void main() {',
+    '  float k = clamp((uTime - aDelay) / 0.65, 0.0, 1.0);',
+    '  float e = 1.0 - pow(1.0 - k, 3.0);',
+    '  vec3 p = position;',
+    '  p.y -= (1.0 - e) * uRise;',
+    '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+    '  gl_Position = projectionMatrix * mv;',
+    '  gl_PointSize = max(1.0, uSize * projectionMatrix[1][1] * uHalfHeight / -mv.z);',
+    '  vAlpha = smoothstep(0.0, 0.6, k) * aAlpha;',
+    '  vShade = aShade;',
+    '  vFeather = clamp(1.5 / gl_PointSize, 0.02, 0.5);',
+    '}'
+  ].join('\n');
+  var DOT_FRAGMENT = [
+    'uniform vec3 uColor;',
+    'uniform float uOpacity;',
+    'varying float vAlpha;',
+    'varying float vShade;',
+    'varying float vFeather;',
+    'void main() {',
+    '  float r = length(gl_PointCoord - 0.5);',
+    '  float a = 1.0 - smoothstep(0.5 - vFeather, 0.5, r);',
+    '  if (a * vAlpha <= 0.001) discard;',
+    '  gl_FragColor = vec4(uColor * vShade, a * vAlpha * uOpacity);',
+    '}'
+  ].join('\n');
+
+  /** Lines drawn as thin tubes: they draw in along their length, and a bright pulse can travel along them. */
+  var PATH_VERTEX = [
+    'varying float vU;',
+    'void main() {',
+    '  vU = uv.x;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+    '}'
+  ].join('\n');
+  var PATH_FRAGMENT = [
+    'uniform vec3 uColor;',
+    'uniform vec3 uHot;',
+    'uniform float uDraw;',
+    'uniform float uHead;',
+    'uniform float uTail;',
+    'uniform float uBase;',
+    'uniform float uFadeEnd;',
+    'varying float vU;',
+    'void main() {',
+    '  if (vU > uDraw) discard;',
+    '  float d = uHead - vU;',
+    '  float c = (d >= 0.0 && d <= uTail) ? 1.0 - d / uTail : 0.0;',
+    '  c *= c;',
+    '  float a = uBase + (1.0 - uBase) * c;',
+    '  if (uFadeEnd > 0.0) a *= 1.0 - smoothstep(1.0 - uFadeEnd, 1.0, vU);',
+    '  gl_FragColor = vec4(mix(uColor, uHot, c), a);',
+    '}'
+  ].join('\n');
+
+  /** Positions HTML labels over a scene, kept inside its frame. */
+  function makeLabels(container, className, texts) {
+    return texts.map(function (text) {
+      var el = document.createElement('span');
+      el.className = className;
+      el.textContent = text;
+      if (container) container.appendChild(el);
+      return { el: el, w: 0, h: 0, visible: false, x: 0, y: 0 };
+    });
+  }
+  function measureLabels(labels) {
+    labels.forEach(function (l) { l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; });
+  }
+  function setLabel(l, x, y, visible) {
+    l.x = x; l.y = y;
+    l.el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+    if (visible !== l.visible) {
+      l.visible = visible;
+      l.el.classList.toggle('is-visible', visible);
+    }
+  }
+
+  /* ==========================================================================
+     Hero globe
+     Land is drawn as dots sampled from a 240 × 120 land mask (1.5° cells),
+     derived from the NOAA GLOBE dataset via the global-land-mask package.
+     Arcs connect the places named in the caption. The canvas is decorative
+     (aria-hidden); the figcaption carries the same information as text.
+     On arrival the dots gather into the continents while the camera eases in;
+     the globe then turns slowly, leans toward the pointer and recedes as the
+     hero scrolls away. Under reduced motion it is still (it can be dragged).
+     ========================================================================== */
+  var LAND_MASK_W = 240, LAND_MASK_H = 120;
+  var LAND_MASK = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf/+H///4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP3/h/////AAAAAAAAAAAAOAAAAAAAAAAAAAAAAAADv4P////8AAAPgAAAAAAAAIAAAAAAAAAAAAAAAAAAPwP////8AAAAAAAAAAAAAMAAAAAAAAAAAAAAAZBhAAAH///8AAAAAAAACAAAP/4AAKAAAAAAAAAAIAAAAAAD///8AAAAAAAAYAAD//gAAAAAAAAAAAAAfwxkXYAB///wAAAAAAABgDA/////wAAAAAAAAAAAA/wMf/AAf//oAAAAAAAAgHfv////y/+AAAAA//gCAf8GGH4AP//wAAAAPwAAAHf////////+AggD/////gwXmF4AP/4AAAAD//gBf7r///////////6A////////+B/A//gAAAAH//4v//f///////////GH////////0D4Af4AHwAAPx+H///////////////AAf///////EA+AP4ABAAAfj////////////////+AD///////8AIAAHwAAAAD/P///////////////v4AD/5/////4APgAAgAAAAD/H//////////////wdAAA+AD////4APyAAAAAAAD/B////////////+ABgAAAEAAf///8AH/AAAAAAMAOD////////////4AHAAAAAAAf////gH/gAAAAAMAkP////////////wAPAAAAAAAH////+P/4AAAAASAgP////////////gAOAAAAAAAD////+P/8AAAAAzD//////////////8AMAAAAAAAB/////f/+AAAAAHn//////////////8AAAAAAAAAB//////9AAAAAAAf//////////////9AAAAAAAAAAP/////2HAAAAAB///////////////4AAAAAAAAAAf/////+AAAAAAB///////////////wAAAAAAAAAAP//////AAAAAAB///yf//////////wAAAAAAAAAAf/////yAAAAAAB+T/gP//////////AAAAAAAAAAAf/////gAAAAAA/wY/AD/////////4BAAAAAAAAAAf////+AAAAAAA/gGfHD/////////wAAAAAAAAAAAP////8AAAAAAA/AAY//////////hgEAAAAAAAAAAP////4AAAAAAA/AAM//////////gwEAAAAAAAAAAH////4AAAAAAAICgAW/////////4QcAAAAAAAAAAD////4AAAAAAAJ/gAA/////////ww4AAAAAAAAAAB////gAAAAAAAf/gAA/////////wAAAAAAAAAAAAA////AAAAAAAA//8IB/////////4EAAAAAAAAAAAAH///AAAAAAAA///fv/////////4AAAAAAAAAAAAAH/wBAAAAAAAB//////z///////4AAAAAAAAAAAAAL/gBAAAAAAAD////8/x///////wAAAAAAAAAAAAAB/gAAAAAAAAH////+/4P//////wAAAAAAAAAAAAAA/gAAAAAAAAP////+f8QH/////gAAAAAAAAAAAAAAfgAAAAAAAAf/////P/4D/////IAAAAAAAAAAAAAAPgAQAAAAAAf/////P/4B/8f/QAAAAAAAAAAAAAAAPgwAAAAAAAf/////n/4Af4P+AAAAAAAAAAAAAAAAHxgAgAAAAAf/////j/wAfwH8AAAAAAAAAAAAAAAAB/gAAAAAAAf/////z/AAfgH+AIAAAAAAAAAAAAAAADgAAAAAAAf/////x8AAfAB/AIAAAAAAAAAAAAAAAB8AAAAAAAf/////5wAAOAB/gAAAAAAAAAAAAAAAAAMAAAAAAAf/////+AAAOAAvgAAAAAAAAAAAAAAAAAEBQAAAAAP/////+EAAGAAHAAAAAAAAAAAAAAAAAACDfgAAAAH//////8AAGAACAAAAAAAAAAAAAAAAAAAP/wAAAAH//////4AABAAgABAAAAAAAAAAAAAAAAAP/4AAAAB//////4AABAAAABAAAAAAAAAAAAAAAAAH//gAAAAyD////wAAAAAYBgAAAAAAAAAAAAAAAAAH//wAAAAAA////gAAAABYDAAAAAAAAAAAAAAAAAAP//wAAAAAAf///AAAAAAoPAAAAAAAAAAAAAAAAAAf//wAAAAAA///+AAAAAA4fgAAAAAAAAAAAAAAAAA///8AAAAAA///8AAAAAAYfACAAAAAAAAAAAAAAAA////AAAAAAf//4AAAAAAcOICYAAAAAAAAAAAAAAA////8AAAAAf//wAAAAAAMAEA/AAAAAAAAAAAAAAA/////AAAAAP//wAAAAAAAAAAPgAAAAAAAAAAAAAAf////gAAAAH//wAAAAAABAAAHwAAAAAAAAAAAAAAf////gAAAAH//wAAAAAAAAAAHIAAAAAAAAAAAAAAP////AAAAAH//wAAAAAAAAAAAAAAAAAAAAAAAAAAP///+AAAAAH//4AAAAAAAAAAAAAAAAAAAAAAAAAAH///8AAAAAH//4AAAAAAAAAHgAAAAAAAAAAAAAAAH///8AAAAAP//4IAAAAAAAAnBAAAAAAAAAAAAAAAB///8AAAAAP//4YAAAAAAAB/jgAAAAAAAAAAAAAAA///8AAAAAP//g4AAAAAAAD/7gAAAAAAAAAAAAAAAf//4AAAAAP//A4AAAAAAAH//gAAAAAAAAAAAAAAAf//4AAAAAH/+AwAAAAAAAP//4AAAAAAAAAAAAAAAf//wAAAAAH/+BwAAAAAAB///4AAAAAAAAAAAAAAAf//AAAAAAD//BwAAAAAAD///8AAAAAAAAAAAAAAAf/8AAAAAAD/+AgAAAAAAD///+AAAAAAAAAAAAAAAf/4AAAAAAD/8AAAAAAAAD////AAAAAAAAAAAAAAAf/4AAAAAAB/8AAAAAAAAD////AAAAAAAAAAAAAAAf/4AAAAAAB/4AAAAAAAAB////AAAAAAAAAAAAAAA//wAAAAAAA/wAAAAAAAAB////AAAAAAAAAAAAAAA//gAAAAAAA/gAAAAAAAAB/B/+AAAAAAAAAAAAAAA//AAAAAAAA+AAAAAAAAABwAv+AAAAAAAAAAAAAAA/4AAAAAAAAAAAAAAAAAAAAAH8AAAAAAAAAAAAAAB/8AAAAAAAAAAAAAAAAAAAAAH8AAAAAAAAAAAAAAB/4AAAAAAAAAAAAAAAAAAAAABQAAGAAAAAAAAAAAB/AAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAB+AAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAQAAgAAAAAAAAAAAB8AAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAADwAAAD/MAHwAAAAAAAAAAAAAAAAEAAAAAAAAAAAB//8B///////wAAAAAAAAAAAAAAA3AAAAAAAAAADP//8H////////8AAAAAAAAAAAAAAXgAAAAAQf//////8//////////8AAAAAAAAABAAAHgAAAAD///////////////////+AAAAAAAAAB////gAAAAf///////////////////wAAAAAf///////8AAAAD////////////////////AAAAAD///////4AAAAH/////////////////////gAAAA////////AAAHgf/////////////////////AAAAAP///////4AAPAD////////////////////+AAAAA/////////8AAP//////////////////////AAAAH//////////H////////////////////////8A/AAP////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////';
+
+  var PLACES = {
+    delhi:   { name: 'Delhi',          lat: 28.61, lon: 77.21,  side: 'left'  },
+    lucknow: { name: 'Lucknow',        lat: 26.85, lon: 80.95,  side: 'right' },
+    mumbai:  { name: 'Mumbai',         lat: 19.08, lon: 72.88,  side: 'left'  },
+    uganda:  { name: 'Uganda',         lat: 1.37,  lon: 32.29,  side: 'right' },
+    eu:      { name: 'EU market',      lat: 50.85, lon: 4.35,   side: 'left'  },
+    varna:   { name: 'Varna',          lat: 43.21, lon: 27.91,  side: 'right' },
+    dc:      { name: 'Washington, DC', lat: 38.90, lon: -77.04, side: 'right' }
+  };
+  // [from, to, primary?] — Uganda → EU is the coffee export lane
+  var ARCS = [
+    ['uganda', 'eu', true],
+    ['dc', 'uganda', false],
+    ['delhi', 'varna', false],
+    ['delhi', 'mumbai', false],
+    ['delhi', 'lucknow', false]
+  ];
+
+  function decodeMask() {
+    var bin = window.atob(LAND_MASK);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return function isLand(lat, lon) {
+      var r = Math.min(LAND_MASK_H - 1, Math.max(0, Math.floor((90 - lat) / 180 * LAND_MASK_H)));
+      var c = Math.min(LAND_MASK_W - 1, Math.max(0, Math.floor((lon + 180) / 360 * LAND_MASK_W)));
+      var idx = r * LAND_MASK_W + c;
+      return ((bytes[idx >> 3] >> (7 - (idx & 7))) & 1) === 1;
+    };
+  }
+
+  function initGlobe() {
+    var host = document.querySelector('[data-globe]');
+    if (!host) return;
+    if (!webglAvailable()) { host.classList.add('is-unavailable'); return; }
+    loadThree().then(function () { buildGlobe(host); }).catch(function (err) {
+      host.classList.add('is-unavailable');
+      warn('globe', err);
+    });
+  }
+
+  function buildGlobe(host) {
+    var THREE = window.THREE;
+    var COLOR_ACCENT = 0xE5A53A, COLOR_ACCENT_BRIGHT = 0xF6C46A;
+    var R = 1;
+    var small = window.innerWidth < 600;
+    var baseZ = small ? 4.2 : 4.6;
+    var rand = seeded(1729);
+
+    var stage = createStage(host, 32);
+    var scene = stage.scene, camera = stage.camera;
+    camera.position.set(0, 0, baseZ);
+
+    // rig: leans toward the pointer · tilt: fixed lean plus vertical drag · spin: turning
+    var rig = new THREE.Group();
+    var tilt = new THREE.Group();
+    var spin = new THREE.Group();
+    tilt.rotation.x = 0.36;
+    rig.add(tilt);
+    tilt.add(spin);
+    scene.add(rig);
+
+    function toVec3(lat, lon, radius) {
+      var phi = (90 - lat) * DEG;
+      var theta = (lon + 180) * DEG;
+      return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      );
+    }
+
+    // Ocean body: opaque, so dots and arcs on the far side are hidden by depth
+    spin.add(new THREE.Mesh(
+      new THREE.SphereGeometry(R * 0.985, 64, 48),
+      new THREE.MeshBasicMaterial({ color: 0x15263D })
+    ));
+
+    // Silhouette ring: a faint hairline laid exactly on the sphere's visible outline, facing the camera
+    var ringMat = new THREE.MeshBasicMaterial({ color: 0xF5F4F0, transparent: true, opacity: 0, depthWrite: false });
+    var silhouette = new THREE.Mesh(new THREE.RingGeometry(1, 1.006, 192), ringMat);
+    scene.add(silhouette);
+    function placeSilhouette() {
+      var d = camera.position.z;
+      silhouette.position.set(0, 0, (R * R) / d);
+      silhouette.scale.setScalar(R * Math.sqrt(1 - (R * R) / (d * d)) * 1.004);
+    }
+
+    // Land dots on a Fibonacci sphere; each starts a little above the surface and settles,
+    // in a wave that spreads out from the side facing the viewer
+    var isLand = decodeMask();
+    var N = small ? 11000 : 18000;
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    var focus = toVec3(20.6, 45, 1).normalize();
+    var land = [], delays = [], lifts = [];
+    for (var i = 0; i < N; i++) {
+      var y = 1 - 2 * (i + 0.5) / N;
+      var rad = Math.sqrt(1 - y * y);
+      var t = i * golden;
+      var x = Math.cos(t) * rad, z = Math.sin(t) * rad;
+      var lat = Math.asin(y) / DEG;
+      var lon = Math.atan2(z, -x) / DEG - 180;
+      if (lon < -180) lon += 360;
+      if (!isLand(lat, lon)) continue;
+      land.push(x * R, y * R, z * R);
+      var away = Math.acos(clamp(x * focus.x + y * focus.y + z * focus.z, -1, 1)) / Math.PI;
+      delays.push(away * 0.55 + rand() * 0.12);
+      lifts.push(0.06 + rand() * 0.3);
+    }
+    var dotCanvas = document.createElement('canvas');
+    dotCanvas.width = dotCanvas.height = 64;
+    var ctx = dotCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(32, 32, 28, 0, Math.PI * 2); ctx.fill();
+
+    var landGeo = new THREE.BufferGeometry();
+    landGeo.setAttribute('position', new THREE.Float32BufferAttribute(land, 3));
+    landGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(delays, 1));
+    landGeo.setAttribute('aLift', new THREE.Float32BufferAttribute(lifts, 1));
+    var intro = { value: 0 };
+    var landMat = new THREE.PointsMaterial({
+      color: 0xC9D3E0,
+      size: small ? 0.05 : 0.042,
+      sizeAttenuation: true,
+      map: new THREE.CanvasTexture(dotCanvas),
+      transparent: true,
+      alphaTest: 0.35,
+      depthWrite: false
+    });
+    // Extends the stock points shader: the gathering intro, plus dots that thin and dim toward the rim
+    landMat.onBeforeCompile = function (shader) {
+      shader.uniforms.uIntro = intro;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', [
+          '#include <common>',
+          'attribute float aDelay;',
+          'attribute float aLift;',
+          'uniform float uIntro;',
+          'varying float vShade;'
+        ].join('\n'))
+        .replace('#include <begin_vertex>', [
+          '#include <begin_vertex>',
+          'float kIn = clamp((uIntro - aDelay) / 0.5, 0.0, 1.0);',
+          'float eIn = 1.0 - pow(1.0 - kIn, 4.0);',
+          'transformed *= 1.0 + aLift * (1.0 - eIn);'
+        ].join('\n'))
+        .replace('#include <project_vertex>', [
+          '#include <project_vertex>',
+          'vec3 nView = normalize(normalMatrix * normalize(position));',
+          'float facing = clamp(dot(nView, normalize(-mvPosition.xyz)), 0.0, 1.0);',
+          'vShade = smoothstep(0.0, 0.7, kIn) * mix(0.55, 1.0, smoothstep(0.0, 0.5, facing));'
+        ].join('\n'))
+        .replace('#include <logdepthbuf_vertex>', [
+          'gl_PointSize *= mix(0.62, 1.0, smoothstep(0.0, 0.45, facing));',
+          '#include <logdepthbuf_vertex>'
+        ].join('\n'));
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vShade;')
+        .replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\ndiffuseColor.a *= vShade;');
+    };
+    spin.add(new THREE.Points(landGeo, landMat));
+
+    // Place markers: an amber dot that lands with a small settle, and a pulsing ring flat on the surface
+    var markers = {};
+    var dotGeo = new THREE.SphereGeometry(0.014, 16, 12);
+    var ringGeo = new THREE.RingGeometry(0.018, 0.026, 40);
+    var zAxis = new THREE.Vector3(0, 0, 1);
+    Object.keys(PLACES).forEach(function (key, order) {
+      var p = PLACES[key];
+      var pos = toVec3(p.lat, p.lon, R * 1.004);
+      var dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: COLOR_ACCENT, transparent: true, opacity: 0 }));
+      dot.position.copy(pos);
+      spin.add(dot);
+
+      var ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
+        color: COLOR_ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false
+      }));
+      ring.position.copy(pos).multiplyScalar(1.002);
+      ring.quaternion.setFromUnitVectors(zAxis, pos.clone().normalize());
+      spin.add(ring);
+
+      markers[key] = { dot: dot, ring: ring, phase: rand() * Math.PI * 2, appear: 1.0 + order * 0.07, shown: 0 };
+    });
+
+    // Arcs along great circles, lifted in proportion to distance. Each draws in once,
+    // then a short bright pulse carries a traveller along it, like a shipment on its lane.
+    var arcs = ARCS.map(function (def, idx) {
+      var a = toVec3(PLACES[def[0]].lat, PLACES[def[0]].lon, 1).normalize();
+      var b = toVec3(PLACES[def[1]].lat, PLACES[def[1]].lon, 1).normalize();
+      var omega = Math.acos(clamp(a.dot(b), -1, 1));
+      var lift = 0.04 + 0.24 * (omega / Math.PI);
+      var segs = Math.max(24, Math.round(omega * 64));
+      var pts = [];
+      for (var s = 0; s <= segs; s++) {
+        var u = s / segs;
+        var v = omega < 1e-4 ? a.clone() :
+          a.clone().multiplyScalar(Math.sin((1 - u) * omega) / Math.sin(omega))
+            .add(b.clone().multiplyScalar(Math.sin(u * omega) / Math.sin(omega)));
+        pts.push(v.normalize().multiplyScalar(R * (1.006 + lift * Math.sin(Math.PI * u))));
+      }
+      var primary = def[2];
+      var curve = new THREE.CatmullRomCurve3(pts);
+      var mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: srgb(THREE, COLOR_ACCENT) },
+          uHot: { value: srgb(THREE, COLOR_ACCENT_BRIGHT) },
+          uDraw: { value: 0 },
+          uHead: { value: -1 },
+          uTail: { value: primary ? 0.24 : 0.18 },
+          uBase: { value: primary ? 0.9 : 0.55 },
+          uFadeEnd: { value: 0 }
+        },
+        vertexShader: PATH_VERTEX,
+        fragmentShader: PATH_FRAGMENT,
+        transparent: true,
+        depthWrite: false
+      });
+      var tube = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(64, segs * 2), primary ? 0.0048 : 0.0032, 6, false), mat);
+      tube.renderOrder = 2;
+      spin.add(tube);
+
+      var traveller = new THREE.Mesh(
+        new THREE.SphereGeometry(primary ? 0.016 : 0.011, 12, 10),
+        new THREE.MeshBasicMaterial({ color: COLOR_ACCENT_BRIGHT, transparent: true, opacity: 0 })
+      );
+      traveller.renderOrder = 3;
+      spin.add(traveller);
+
+      return {
+        curve: curve, mat: mat, traveller: traveller,
+        speed: primary ? 0.16 : 0.11 + (idx % 3) * 0.02,
+        tail: mat.uniforms.uTail.value,
+        rest: 0.3 + idx * 0.07,
+        drawDelay: 1.3 + idx * 0.18,
+        cycle: idx * 0.31
+      };
+    });
+
+    // HTML labels, positioned from projected marker positions
+    var keys = Object.keys(PLACES);
+    var labels = makeLabels(host.querySelector('[data-globe-labels]'), 'globe__label',
+      keys.map(function (key) { return PLACES[key].name; }));
+
+    // Initial view: centred near 45°E so India, East Africa and Europe face the viewer
+    var startSpin = -(45 + 90) * DEG;
+
+    // Hero position, for the scroll response
+    var hero = document.getElementById('top') || host;
+    var heroTop = 0, heroH = 1;
+    function measureHero() {
+      var r = hero.getBoundingClientRect();
+      heroTop = r.top + window.scrollY;
+      heroH = Math.max(1, r.height);
+    }
+
+    stage.onResize = function () {
+      measureLabels(labels);
+      measureHero();
+    };
+
+    // Drag to rotate, with inertia
+    var dragging = false, lastX = 0, lastY = 0, velocity = 0, idleTimer = 0, userIdle = true, spinBase = 0;
+    host.addEventListener('pointerdown', function (e) {
+      dragging = true; userIdle = false;
+      lastX = e.clientX; lastY = e.clientY; velocity = 0;
+      host.classList.add('is-dragging');
+      if (host.setPointerCapture) host.setPointerCapture(e.pointerId);
+      window.clearTimeout(idleTimer);
+      stage.requestRender();
+    });
+    host.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      velocity = dx * 0.006;
+      spinBase += velocity;
+      tilt.rotation.x = clamp(tilt.rotation.x + dy * 0.004, -0.2, 0.9);
+      stage.requestRender();
+    });
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      host.classList.remove('is-dragging');
+      idleTimer = window.setTimeout(function () { userIdle = true; stage.requestRender(); }, 2500);
+      stage.requestRender();
+    }
+    host.addEventListener('pointerup', endDrag);
+    host.addEventListener('pointercancel', endDrag);
+    host.addEventListener('lostpointercapture', endDrag);
+
+    // The globe leans gently toward a mouse pointer anywhere over the hero
+    var lean = { x: 0, y: 0, tx: 0, ty: 0 };
+    hero.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !finePointer()) return;
+      lean.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      lean.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    });
+    hero.addEventListener('pointerleave', function () { lean.tx = 0; lean.ty = 0; });
+
+    var clock = 0, scrolled = 0;
+    var tmp = new THREE.Vector3(), toCamera = new THREE.Vector3();
+
+    stage.animating = function () {
+      return !reducedMotion() || dragging || Math.abs(velocity) > 0.0001;
+    };
+
+    stage.update = function (dt) {
+      var still = reducedMotion();
+      clock = still ? Math.max(clock, 60) : clock + dt;
+      var t = clock;
+
+      // Intro: dots gather, the camera eases in and the globe turns into place
+      intro.value = Math.min(1.2, t / 1.6);
+      var arrive = easeOut(clamp(t / 2.4, 0, 1));
+      var turnIn = -0.55 * (1 - easeOut(clamp(t / 2.8, 0, 1)));
+
+      if (!dragging) {
+        if (Math.abs(velocity) > 0.0001) { spinBase += velocity * dt * 60; velocity *= Math.pow(0.94, dt * 60); }
+        else if (userIdle && !still) spinBase += dt * 0.07;
+      }
+
+      // Pointer lean and scroll depth, eased so they never feel attached to the input
+      var k = 1 - Math.exp(-dt * 3.5);
+      lean.x += ((still ? 0 : lean.tx) - lean.x) * k;
+      lean.y += ((still ? 0 : lean.ty) - lean.y) * k;
+      var p = still ? 0 : clamp((window.scrollY - heroTop) / heroH, 0, 1);
+      scrolled += (p - scrolled) * (1 - Math.exp(-dt * 8));
+
+      rig.rotation.y = lean.x * 0.12;
+      rig.rotation.x = lean.y * 0.07;
+      spin.rotation.y = startSpin + spinBase + turnIn + scrolled * 0.6;
+      camera.position.z = baseZ + 1.1 * (1 - arrive) + scrolled * 0.8;
+      placeSilhouette();
+      ringMat.opacity = 0.14 * smoothstep(0.4, 1.5, t);
+
+      keys.forEach(function (key) {
+        var m = markers[key];
+        m.shown = clamp((t - m.appear) / 0.5, 0, 1);
+        m.dot.scale.setScalar(0.55 + 0.45 * easeOutBack(m.shown));
+        m.dot.material.opacity = smoothstep(0, 0.4, m.shown);
+        var pulse = still ? 0.5 : (Math.sin(t * 2.2 + m.phase) + 1) / 2;
+        var rs = 1 + pulse * 0.9;
+        m.ring.scale.set(rs, rs, rs);
+        m.ring.material.opacity = (0.65 - pulse * 0.45) * m.shown;
+      });
+
+      arcs.forEach(function (arc) {
+        var drawn = easeInOut(clamp((t - arc.drawDelay) / 1.1, 0, 1));
+        arc.mat.uniforms.uDraw.value = drawn;
+        var head = -1;
+        if (still) {
+          // Reduced motion: no pulse; the traveller rests at the middle of its lane
+          arc.traveller.position.copy(arc.curve.getPointAt(0.5));
+          arc.traveller.material.opacity = drawn;
+        } else if (drawn >= 1) {
+          arc.cycle += dt * arc.speed;
+          head = arc.cycle % (1 + arc.tail + arc.rest); // runs past the end so the tail leaves, then rests
+          if (head <= 1) {
+            arc.traveller.position.copy(arc.curve.getPointAt(head));
+            arc.traveller.material.opacity = smoothstep(0, 0.04, head) * (1 - smoothstep(0.95, 1, head));
+          } else {
+            arc.traveller.material.opacity = 0;
+          }
+        } else {
+          arc.traveller.material.opacity = 0;
+        }
+        arc.mat.uniforms.uHead.value = head;
+      });
+    };
+
+    stage.afterRender = function () {
+      var w = stage.width, h = stage.height;
+      keys.forEach(function (key, i) {
+        var l = labels[i];
+        // Facing = how directly the surface at the marker looks at the camera (the globe sits at the origin)
+        markers[key].dot.getWorldPosition(tmp);
+        toCamera.subVectors(camera.position, tmp).normalize();
+        var facing = toCamera.dot(tmp.normalize());
+        markers[key].dot.getWorldPosition(tmp);
+        tmp.project(camera);
+        var sx = (tmp.x * 0.5 + 0.5) * w;
+        var sy = (-tmp.y * 0.5 + 0.5) * h;
+        var ox = PLACES[key].side === 'left' ? -(l.w + 10) : 10;
+        var lx = clamp(sx + ox, 2, w - l.w - 2); // keep labels inside the frame
+        setLabel(l, lx, sy - 11, facing > 0.28 && markers[key].shown > 0.6);
+      });
+    };
+
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { measureLabels(labels); });
+    stage.resize();
+    measureHero();
+    host.classList.add('is-ready');
+    stage.requestRender();
+  }
+
+  /* ==========================================================================
+     Capacity-roadmap model
+     A small 3D model of the cooperative's export supply chain, built only from
+     the resume figures: 2,000 smallholder farms, washing stations from 3 to 6
+     (recommended) and a roadmap to 20 export containers (384 MT) a year for
+     the EU market. Solid = in place; dashed outline = recommended or roadmap.
+     It assembles when it scrolls into view, can be dragged to turn it, and is
+     still under reduced motion. The figcaption carries the same facts.
+     ========================================================================== */
+  var ROADMAP = { farms: 2000, stationsNow: 3, stationsRecommended: 3, containers: 20 };
+
+  function initRoadmap() {
+    var host = document.querySelector('[data-roadmap]');
+    if (!host) return;
+    if (!webglAvailable()) { host.classList.add('is-unavailable'); return; }
+    var started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      loadThree().then(function () { buildRoadmap(host); }).catch(function (err) {
+        host.classList.add('is-unavailable');
+        warn('roadmap', err);
+      });
+    }
+    // Build shortly before the model scrolls into view
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) { io.disconnect(); start(); }
+      }, { rootMargin: '800px 0px' });
+      io.observe(host);
+    } else {
+      start();
+    }
+  }
+
+  function buildRoadmap(host) {
+    var THREE = window.THREE;
+    var rand = seeded(2000);
+    var stage = createStage(host, 26);
+    var scene = stage.scene, camera = stage.camera;
+
+    // Tones derived from the tokens: navy field, on-dark text tone, amber accent
+    var NAVY = 0x0E1B2E, NAVY_700 = 0x213650, SOFT = 0xB7C1CF;
+    var C = {
+      farm: 0xC9D3E0,
+      grid: mixHex(NAVY, SOFT, 0.17),
+      pad: mixHex(NAVY, 0x0A1524, 0.85),
+      solidTop: mixHex(NAVY_700, SOFT, 0.3),
+      solidLit: mixHex(NAVY_700, SOFT, 0.14),
+      solidShade: NAVY_700,
+      solidEdge: mixHex(NAVY, SOFT, 0.62),
+      ghostTop: mixHex(NAVY, NAVY_700, 0.9),
+      ghostLit: mixHex(NAVY, NAVY_700, 0.6),
+      ghostShade: mixHex(NAVY, NAVY_700, 0.35),
+      ghostEdge: mixHex(NAVY, SOFT, 0.72),
+      road: mixHex(NAVY, SOFT, 0.32),
+      accent: 0xE5A53A,
+      accentBright: 0xF0B54E
+    };
+
+    // Layout in world units; the flow runs along +x
+    var FARM = { x: -3.3, z: 0, rx: 1.55, rz: 1.72 };
+    var ST = { x: -0.75, w: 0.46, d: 0.5, h: 0.2, roof: 0.13, pitch: 0.62 };
+    var BOX = { x: 1.8, l: 0.62, w: 0.25, h: 0.26, gap: 0.025 };
+    var LANE_END = new THREE.Vector3(4.3, 0, 0.5);
+
+    var world = new THREE.Group();
+    scene.add(world);
+
+    function terrain(x, z) {
+      var dx = (x - FARM.x) / FARM.rx, dz = (z - FARM.z) / FARM.rz;
+      var fall = 1 - smoothstep(0.5, 1.08, Math.sqrt(dx * dx + dz * dz));
+      var hills = 0.5 + 0.5 * Math.sin(x * 2.1 + 0.8) * Math.cos(z * 1.7 - 0.3);
+      var ripple = 0.5 + 0.5 * Math.sin(x * 4.3 - z * 3.1 + 1.1);
+      return fall * (0.3 * hills + 0.08 * ripple);
+    }
+
+    // Shared shaders
+    var dotUniforms = [];
+    function dotMaterial(color, size, rise) {
+      var u = {
+        uTime: { value: 0 }, uSize: { value: size }, uHalfHeight: { value: 300 }, uRise: { value: rise },
+        uColor: { value: srgb(THREE, color) }, uOpacity: { value: 1 }
+      };
+      dotUniforms.push(u);
+      return new THREE.ShaderMaterial({
+        uniforms: u, vertexShader: DOT_VERTEX, fragmentShader: DOT_FRAGMENT,
+        transparent: true, depthWrite: false
+      });
+    }
+    // Flat three-tone shading (top, lit side, shaded side): a technical-illustration look with no lights
+    var SOLID_VERTEX = [
+      'varying vec3 vN;',
+      'varying vec3 vL;',
+      'void main() {',
+      '  vN = normalize(mat3(modelMatrix) * normal);',
+      '  vL = position;',
+      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '}'
+    ].join('\n');
+    var SOLID_FRAGMENT = [
+      'uniform vec3 uTop;',
+      'uniform vec3 uLit;',
+      'uniform vec3 uShade;',
+      'uniform float uOpacity;',
+      'uniform float uRibs;',
+      'varying vec3 vN;',
+      'varying vec3 vL;',
+      'void main() {',
+      '  vec3 n = normalize(vN);',
+      '  vec3 c = n.y > 0.55 ? uTop : (abs(n.z) >= abs(n.x) ? uLit : uShade);',
+      '  if (uRibs > 0.0 && abs(n.z) > 0.5) {',
+      '    float rib = abs(fract(vL.x * uRibs) - 0.5);',
+      '    c *= 0.93 + 0.16 * smoothstep(0.38, 0.5, rib);',
+      '  }',
+      '  gl_FragColor = vec4(c, uOpacity);',
+      '}'
+    ].join('\n');
+    function faceMaterial(top, lit, shade, ribs) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTop: { value: srgb(THREE, top) }, uLit: { value: srgb(THREE, lit) }, uShade: { value: srgb(THREE, shade) },
+          uOpacity: { value: 0 }, uRibs: { value: ribs || 0 }
+        },
+        vertexShader: SOLID_VERTEX, fragmentShader: SOLID_FRAGMENT,
+        transparent: true
+      });
+    }
+    function edges(geo, color, dashed, dash) {
+      var mat = dashed
+        ? new THREE.LineDashedMaterial({ color: color, dashSize: dash || 0.045, gapSize: (dash || 0.045) * 0.6, transparent: true, opacity: 0 })
+        : new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0 });
+      var lines = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), mat);
+      if (dashed) lines.computeLineDistances();
+      return lines;
+    }
+    function pad(w, d, x, z) {
+      var m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+        new THREE.MeshBasicMaterial({ color: C.pad, transparent: true, opacity: 0, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, 0.001, z);
+      world.add(m);
+      return m;
+    }
+
+    // Ground: a faint dot grid gives the model a floor and a sense of scale
+    var grid = [], gridDelay = [], gridShade = [], gridAlpha = [];
+    for (var gx = -5.6; gx <= 5.6; gx += 0.25) {
+      for (var gz = -2.25; gz <= 2.25; gz += 0.25) {
+        grid.push(gx, 0, gz);
+        gridDelay.push((gx + 5.6) / 11.2 * 0.5);
+        gridShade.push(1); gridAlpha.push(1);
+      }
+    }
+    var gridGeo = new THREE.BufferGeometry();
+    gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(grid, 3));
+    gridGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(gridDelay, 1));
+    gridGeo.setAttribute('aShade', new THREE.Float32BufferAttribute(gridShade, 1));
+    gridGeo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(gridAlpha, 1));
+    world.add(new THREE.Points(gridGeo, dotMaterial(C.grid, 0.016, 0)));
+
+    // 2,000 smallholder farms: evenly spaced dots (Poisson disc) over rolling hills
+    function placeFarms(count) {
+      var minD = 0.048, pts = [];
+      for (var attempt = 0; attempt < 6 && pts.length < count; attempt++) {
+        pts = [];
+        var cell = minD / Math.SQRT2, cells = {}, tries = 0;
+        while (pts.length < count && tries < count * 60) {
+          tries++;
+          var a = rand() * Math.PI * 2, rr = Math.sqrt(rand());
+          var edge = 1 + 0.1 * Math.sin(a * 5 + 1.3) + 0.05 * Math.sin(a * 9 + 0.4);
+          var x = FARM.x + Math.cos(a) * rr * FARM.rx * edge;
+          var z = FARM.z + Math.sin(a) * rr * FARM.rz * edge;
+          var cx = Math.floor(x / cell), cz = Math.floor(z / cell), ok = true;
+          for (var i = -2; i <= 2 && ok; i++) {
+            for (var j = -2; j <= 2 && ok; j++) {
+              var q = cells[(cx + i) + ',' + (cz + j)];
+              if (q && (q[0] - x) * (q[0] - x) + (q[1] - z) * (q[1] - z) < minD * minD) ok = false;
+            }
+          }
+          if (!ok) continue;
+          var pt = [x, z];
+          cells[cx + ',' + cz] = pt;
+          pts.push(pt);
+        }
+        minD *= 0.88;
+      }
+      return pts.slice(0, count);
+    }
+    var farmPts = placeFarms(ROADMAP.farms);
+    var farmPos = [], farmDelay = [], farmShade = [], farmAlpha = [];
+    farmPts.forEach(function (p) {
+      farmPos.push(p[0], terrain(p[0], p[1]) + 0.012, p[1]);
+      farmDelay.push(0.05 + (p[0] - (FARM.x - FARM.rx)) / (FARM.rx * 2) * 0.75 + rand() * 0.25);
+      farmShade.push(0.72 + rand() * 0.28);
+      farmAlpha.push(1);
+    });
+    var farmGeo = new THREE.BufferGeometry();
+    farmGeo.setAttribute('position', new THREE.Float32BufferAttribute(farmPos, 3));
+    farmGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(farmDelay, 1));
+    farmGeo.setAttribute('aShade', new THREE.Float32BufferAttribute(farmShade, 1));
+    farmGeo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(farmAlpha, 1));
+    world.add(new THREE.Points(farmGeo, dotMaterial(C.farm, 0.03, 0.22)));
+
+    // Washing stations: one row across the flow. The three nearest are in place (solid);
+    // the three beyond are the recommended expansion (dashed outline).
+    var bodyGeo = new THREE.BoxGeometry(ST.w, ST.h, ST.d);
+    bodyGeo.translate(0, ST.h / 2, 0);
+    var roofShape = new THREE.Shape();
+    roofShape.moveTo(-ST.w / 2 - 0.02, 0);
+    roofShape.lineTo(ST.w / 2 + 0.02, 0);
+    roofShape.lineTo(0, ST.roof);
+    roofShape.lineTo(-ST.w / 2 - 0.02, 0);
+    var roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: ST.d + 0.04, bevelEnabled: false });
+    roofGeo.translate(0, ST.h, -(ST.d + 0.04) / 2);
+
+    var stations = [];
+    var total = ROADMAP.stationsNow + ROADMAP.stationsRecommended;
+    for (var s = 0; s < total; s++) {
+      var recommended = s < ROADMAP.stationsRecommended;
+      var sz = (s - (total - 1) / 2) * ST.pitch;
+      var g = new THREE.Group();
+      g.position.set(ST.x, 0, sz);
+      var mat = recommended
+        ? faceMaterial(C.ghostTop, C.ghostLit, C.ghostShade)
+        : faceMaterial(C.solidTop, C.solidLit, C.solidShade);
+      var lines = [
+        edges(bodyGeo, recommended ? C.ghostEdge : C.solidEdge, recommended),
+        edges(roofGeo, recommended ? C.ghostEdge : C.solidEdge, recommended)
+      ];
+      g.add(new THREE.Mesh(bodyGeo, mat), new THREE.Mesh(roofGeo, mat), lines[0], lines[1]);
+      world.add(g);
+      stations.push({
+        group: g, mat: mat, lines: lines, recommended: recommended, z: sz,
+        pad: pad(ST.w + 0.16, ST.d + 0.16, ST.x, sz),
+        appear: recommended ? 1.4 + (ROADMAP.stationsRecommended - 1 - s) * 0.12 : 0.9 + (s - ROADMAP.stationsRecommended) * 0.12
+      });
+    }
+    var nowStations = stations.filter(function (st) { return !st.recommended; });
+
+    // Export containers on the roadmap: 20, stacked 2 long × 5 wide × 2 high, dropped in one by one
+    var boxGeo = new THREE.BoxGeometry(BOX.l, BOX.h, BOX.w);
+    var containers = [];
+    var stackPad = pad(BOX.l * 2 + BOX.gap + 0.2, (BOX.w + BOX.gap) * 5 + 0.2, BOX.x, 0);
+    for (var c = 0; c < ROADMAP.containers; c++) {
+      var layer = Math.floor(c / 10), rest = c % 10;
+      var col = rest % 2, row = Math.floor(rest / 2);
+      var mesh = new THREE.Mesh(boxGeo, faceMaterial(C.ghostTop, C.ghostLit, C.ghostShade, 14));
+      var outline = edges(boxGeo, C.ghostEdge, true, 0.07);
+      var box = new THREE.Group();
+      box.add(mesh, outline);
+      box.position.set(
+        BOX.x + (col - 0.5) * (BOX.l + BOX.gap),
+        BOX.h / 2 + layer * (BOX.h + 0.01),
+        (row - 2) * (BOX.w + BOX.gap)
+      );
+      world.add(box);
+      containers.push({ group: box, mesh: mesh, outline: outline, y: box.position.y, appear: 1.75 + c * 0.055 });
+    }
+
+    // Roads: stations to the stack, and the export lane out toward the EU market
+    var pathMats = [];
+    function road(points, radius, base, fadeEnd, delay) {
+      var curve = new THREE.CatmullRomCurve3(points);
+      var mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: srgb(THREE, C.road) }, uHot: { value: srgb(THREE, C.accent) },
+          uDraw: { value: 0 }, uHead: { value: -1 }, uTail: { value: 0.2 }, uBase: { value: base },
+          uFadeEnd: { value: fadeEnd }
+        },
+        vertexShader: PATH_VERTEX, fragmentShader: PATH_FRAGMENT,
+        transparent: true, depthWrite: false
+      });
+      world.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 96, radius, 5, false), mat));
+      pathMats.push({ mat: mat, delay: delay });
+      return curve;
+    }
+    var stackIn = BOX.x - BOX.l - 0.08;
+    var roads = nowStations.map(function (st, i) {
+      return road([
+        new THREE.Vector3(ST.x + ST.w / 2 + 0.04, 0.012, st.z),
+        new THREE.Vector3(lerp(ST.x, stackIn, 0.5), 0.012, st.z * 0.55),
+        new THREE.Vector3(stackIn, 0.012, st.z * 0.22)
+      ], 0.0045, 0.75, 0, 2.3 + i * 0.1);
+    });
+    var lane = road([
+      new THREE.Vector3(BOX.x + BOX.l + 0.08, 0.012, 0),
+      new THREE.Vector3(3.15, 0.012, 0.1),
+      new THREE.Vector3(3.75, 0.012, 0.3),
+      LANE_END.clone().setY(0.012)
+    ], 0.006, 0.85, 0, 2.5);
+
+    // The EU market marker matches the globe's: an amber dot with a pulsing ring at the end of the lane
+    var euDot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0 }));
+    var euAt = LANE_END;
+    euDot.position.set(euAt.x, 0.04, euAt.z);
+    var euRing = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.075, 40),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+    euRing.rotation.x = -Math.PI / 2;
+    euRing.position.set(euAt.x, 0.004, euAt.z);
+    world.add(euDot, euRing);
+
+    // Flow: amber dots from individual farms into the stations in place, on to the stack, then out to market
+    var FARM_FLOW = 44, ROAD_FLOW = 3, LANE_FLOW = 6;
+    var flow = [];
+    function respawn(f) {
+      var i = Math.floor(rand() * farmPts.length);
+      var fx = farmPts[i][0], fz = farmPts[i][1];
+      var best = nowStations[0];
+      nowStations.forEach(function (st) { if (Math.abs(st.z - fz) < Math.abs(best.z - fz)) best = st; });
+      f.from.set(fx, terrain(fx, fz) + 0.03, fz);
+      f.to.set(ST.x - ST.w / 2 - 0.05, 0.06, best.z + (rand() - 0.5) * 0.24);
+      f.u = 0;
+      f.rate = (0.45 + rand() * 0.25) / Math.max(0.5, f.from.distanceTo(f.to));
+    }
+    for (var fi = 0; fi < FARM_FLOW; fi++) {
+      var f = { kind: 'farm', from: new THREE.Vector3(), to: new THREE.Vector3(), u: 0, rate: 0.2 };
+      respawn(f);
+      f.u = rand();
+      flow.push(f);
+    }
+    roads.forEach(function (curve) {
+      for (var r = 0; r < ROAD_FLOW; r++) flow.push({ kind: 'path', curve: curve, u: r / ROAD_FLOW, rate: 0.22 });
+    });
+    for (var li = 0; li < LANE_FLOW; li++) flow.push({ kind: 'path', curve: lane, u: li / LANE_FLOW, rate: 0.16, fade: true });
+
+    var flowPos = new Float32Array(flow.length * 3);
+    var flowAlpha = new Float32Array(flow.length);
+    var flowGeo = new THREE.BufferGeometry();
+    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3));
+    flowGeo.setAttribute('aAlpha', new THREE.BufferAttribute(flowAlpha, 1));
+    flowGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(new Array(flow.length).fill(0), 1));
+    flowGeo.setAttribute('aShade', new THREE.Float32BufferAttribute(flow.map(function (_, i) { return i % 4 ? 1 : 1.12; }), 1));
+    var flowMat = dotMaterial(C.accent, 0.055, 0);
+    var flowPoints = new THREE.Points(flowGeo, flowMat);
+    flowPoints.frustumCulled = false;
+    world.add(flowPoints);
+    var tmpV = new THREE.Vector3();
+
+    function placeFlow(dt, moving) {
+      flow.forEach(function (f, i) {
+        if (moving) {
+          f.u += dt * f.rate;
+          if (f.u >= 1) { if (f.kind === 'farm') respawn(f); else f.u -= 1; }
+        }
+        var a;
+        if (f.kind === 'farm') {
+          tmpV.lerpVectors(f.from, f.to, f.u);
+          tmpV.y = lerp(f.from.y, f.to.y, f.u) + 0.1 * Math.sin(Math.PI * f.u);
+          a = smoothstep(0, 0.12, f.u) * (1 - smoothstep(0.88, 1, f.u));
+        } else {
+          f.curve.getPointAt(f.u, tmpV);
+          tmpV.y += 0.035;
+          a = smoothstep(0, 0.1, f.u) * (1 - smoothstep(f.fade ? 0.7 : 0.9, f.fade ? 0.95 : 1, f.u));
+        }
+        flowPos[i * 3] = tmpV.x; flowPos[i * 3 + 1] = tmpV.y; flowPos[i * 3 + 2] = tmpV.z;
+        flowAlpha[i] = a;
+      });
+      flowGeo.attributes.position.needsUpdate = true;
+      flowGeo.attributes.aAlpha.needsUpdate = true;
+    }
+
+    // Labels: anchored above each part of the model
+    var labelDefs = [
+      { text: '2,000 smallholder farms', at: new THREE.Vector3(FARM.x + 0.1, 0.5, FARM.z - 0.25), show: 1.0 },
+      { text: '3 washing stations', at: new THREE.Vector3(ST.x, 0.5, nowStations[1].z), show: 1.5 },
+      { text: '3 more recommended', at: new THREE.Vector3(ST.x, 0.5, stations[1].z), show: 1.9 },
+      { text: 'Roadmap: 20 containers (384 MT) a year', at: new THREE.Vector3(BOX.x, 0.78, 0), show: 2.8 },
+      { text: 'EU market', at: new THREE.Vector3(euAt.x, 0.14, euAt.z), show: 3.0 }
+    ];
+    var labels = makeLabels(host.querySelector('[data-roadmap-labels]'), 'roadmap__label',
+      labelDefs.map(function (d) { return d.text; }));
+
+    // Camera: a three-quarter view, framed to fit the panel's shape. Wide panels look across the
+    // flow; tall ones look down it, so farms sit at the back and the stack in front.
+    var view = { az: 0, el: 0, dist: 10, target: new THREE.Vector3() };
+    // Points that must stay in frame: the field's outline, every building's footprint, the stack,
+    // the market marker and the label anchors
+    var fitPoints = [];
+    (function () {
+      for (var a = 0; a < Math.PI * 2; a += Math.PI / 16) {
+        var edge = 1 + 0.1 * Math.sin(a * 5 + 1.3) + 0.05 * Math.sin(a * 9 + 0.4);
+        fitPoints.push(new THREE.Vector3(FARM.x + Math.cos(a) * FARM.rx * edge, 0, FARM.z + Math.sin(a) * FARM.rz * edge));
+      }
+      stations.forEach(function (st) {
+        [-1, 1].forEach(function (sx) {
+          [-1, 1].forEach(function (sz) {
+            fitPoints.push(new THREE.Vector3(ST.x + sx * (ST.w / 2 + 0.08), 0, st.z + sz * (ST.d / 2 + 0.08)));
+          });
+        });
+      });
+      [BOX.x - BOX.l - 0.05, BOX.x + BOX.l + 0.05].forEach(function (x) {
+        [0, BOX.h * 2 + 0.01].forEach(function (y) {
+          [-0.7, 0.7].forEach(function (z) { fitPoints.push(new THREE.Vector3(x, y, z)); });
+        });
+      });
+      fitPoints.push(new THREE.Vector3(euAt.x + 0.12, 0, euAt.z), new THREE.Vector3(euAt.x, 0, euAt.z + 0.12));
+    })();
+    function frameView(aspect) {
+      var t = clamp((aspect - 0.85) / (2 - 0.85), 0, 1);
+      var az = lerp(64, 34, t) * DEG, el = lerp(44, 37, t) * DEG;
+      var pts = fitPoints.concat(labelDefs.map(function (d) { return d.at; }));
+      var dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      var target = new THREE.Vector3(0, 0.15, 0), dist = 11, v = new THREE.Vector3();
+      var right = new THREE.Vector3(), up = new THREE.Vector3();
+      // Labels sit above their anchors, so reserve about 34px at the top of the frame
+      var top = 1 - 34 / (stage.height / 2), bottom = -0.92, side = 0.94;
+      for (var it = 0; it < 10; it++) {
+        camera.position.copy(target).addScaledVector(dir, dist);
+        camera.lookAt(target);
+        camera.updateMatrixWorld();
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        pts.forEach(function (p) {
+          v.copy(p).project(camera);
+          minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+          minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+        });
+        var halfH = dist * Math.tan(camera.fov * DEG / 2), halfW = halfH * camera.aspect;
+        right.setFromMatrixColumn(camera.matrixWorld, 0);
+        up.setFromMatrixColumn(camera.matrixWorld, 1);
+        target.addScaledVector(right, (minX + maxX) / 2 * halfW);
+        target.addScaledVector(up, ((minY + maxY) / 2 - (top + bottom) / 2) * halfH);
+        dist *= Math.max((maxX - minX) / 2 / side, (maxY - minY) / (top - bottom));
+      }
+      view.az = az; view.el = el; view.dist = dist; view.target.copy(target);
+    }
+
+    stage.onResize = function (w, h) {
+      frameView(w / h);
+      var halfHeight = h * stage.pixelRatio / 2;
+      dotUniforms.forEach(function (u) { u.uHalfHeight.value = halfHeight; });
+      measureLabels(labels);
+    };
+
+    // Drag to turn the model; it eases back to its framed view after a pause.
+    // A mouse over the model makes it lean slightly toward the pointer.
+    var drag = { on: false, x: 0, y: 0, az: 0, el: 0, vaz: 0, idle: 0 };
+    var lean = { x: 0, y: 0, tx: 0, ty: 0 };
+    host.addEventListener('pointerdown', function (e) {
+      drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.vaz = 0; drag.idle = 0;
+      host.classList.add('is-dragging');
+      if (host.setPointerCapture) host.setPointerCapture(e.pointerId);
+      stage.requestRender();
+    });
+    host.addEventListener('pointermove', function (e) {
+      if (drag.on) {
+        var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        drag.x = e.clientX; drag.y = e.clientY;
+        drag.vaz = -dx * 0.006;
+        drag.az = clamp(drag.az + drag.vaz, -0.6, 0.6);
+        drag.el = clamp(drag.el + dy * 0.004, -0.2, 0.32);
+        stage.requestRender();
+      } else if (e.pointerType === 'mouse' && finePointer()) {
+        var r = host.getBoundingClientRect();
+        lean.tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        lean.ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      }
+    });
+    function endDrag() {
+      if (!drag.on) return;
+      drag.on = false;
+      host.classList.remove('is-dragging');
+      stage.requestRender();
+    }
+    host.addEventListener('pointerup', endDrag);
+    host.addEventListener('pointercancel', endDrag);
+    host.addEventListener('lostpointercapture', endDrag);
+    host.addEventListener('pointerleave', function () { lean.tx = 0; lean.ty = 0; });
+
+    // The intro starts once a third of the model is in view
+    var playing = false, clock = 0;
+    if ('IntersectionObserver' in window) {
+      var seen = new IntersectionObserver(function (entries) {
+        if (entries[0].intersectionRatio >= 0.3) { playing = true; seen.disconnect(); stage.requestRender(); }
+      }, { threshold: [0, 0.3, 0.6] });
+      seen.observe(host);
+    } else {
+      playing = true;
+    }
+
+    stage.animating = function () {
+      return !reducedMotion() || drag.on || Math.abs(drag.az) + Math.abs(drag.el) > 0.001;
+    };
+
+    var dir = new THREE.Vector3();
+    stage.update = function (dt) {
+      var still = reducedMotion();
+      if (still) clock = Math.max(clock, 60);
+      else if (playing) clock += dt;
+      var t = clock;
+
+      dotUniforms.forEach(function (u) { u.uTime.value = t; });
+
+      stations.forEach(function (st) {
+        var k = clamp((t - st.appear) / 0.6, 0, 1);
+        var e = easeOutBack(k);
+        st.group.scale.y = st.recommended ? 1 : Math.max(0.05, lerp(0.15, 1, e));
+        st.group.position.y = st.recommended ? (1 - easeOut(k)) * 0.08 : 0;
+        st.mat.uniforms.uOpacity.value = smoothstep(0, 0.45, k);
+        st.lines.forEach(function (l) { l.material.opacity = smoothstep(0.1, 0.7, k) * (st.recommended ? 0.95 : 0.9); });
+        st.pad.material.opacity = smoothstep(0, 0.6, k);
+        if (k >= 1) st.mat.transparent = false;
+      });
+
+      stackPad.material.opacity = smoothstep(1.6, 2.2, t);
+      containers.forEach(function (ct) {
+        var k = clamp((t - ct.appear) / 0.55, 0, 1);
+        ct.group.position.y = ct.y + (1 - easeOut(k)) * 0.7;
+        var a = smoothstep(0, 0.35, k);
+        ct.mesh.material.uniforms.uOpacity.value = a;
+        ct.outline.material.opacity = a * 0.95;
+        if (k >= 1) ct.mesh.material.transparent = false;
+      });
+
+      pathMats.forEach(function (p) { p.mat.uniforms.uDraw.value = easeInOut(clamp((t - p.delay) / 0.9, 0, 1)); });
+
+      var markerIn = clamp((t - 2.9) / 0.5, 0, 1);
+      euDot.material.opacity = smoothstep(0, 0.4, markerIn);
+      euDot.scale.setScalar(0.55 + 0.45 * easeOutBack(markerIn));
+      var pulse = still ? 0.5 : (Math.sin(t * 2.2) + 1) / 2;
+      euRing.scale.setScalar(1 + pulse * 0.9);
+      euRing.material.opacity = (0.65 - pulse * 0.45) * markerIn;
+
+      flowMat.uniforms.uOpacity.value = smoothstep(2.4, 3.2, t);
+      placeFlow(dt, !still && t > 2.4);
+
+      // Camera: framed view, plus a slow sway, the pointer lean and any drag offset
+      if (!drag.on) {
+        drag.az = clamp(drag.az + drag.vaz, -0.6, 0.6);
+        drag.vaz *= Math.pow(0.9, dt * 60);
+        drag.idle += dt;
+        if (drag.idle > 3) {
+          var back = Math.exp(-dt * 2.2);
+          drag.az *= back; drag.el *= back;
+        }
+      } else {
+        drag.idle = 0;
+      }
+      var k2 = 1 - Math.exp(-dt * 3);
+      lean.x += ((still ? 0 : lean.tx) - lean.x) * k2;
+      lean.y += ((still ? 0 : lean.ty) - lean.y) * k2;
+      var sway = still ? 0 : 1;
+      var az = view.az + drag.az + lean.x * 0.035 + sway * 0.03 * Math.sin(t * 0.23);
+      var el = clamp(view.el + drag.el + lean.y * 0.02 + sway * 0.012 * Math.sin(t * 0.17), 8 * DEG, 70 * DEG);
+      var dolly = 1 + 0.14 * (1 - easeOut(clamp(t / 2.8, 0, 1)));
+      dir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      camera.position.copy(view.target).addScaledVector(dir, view.dist * dolly);
+      camera.lookAt(view.target);
+    };
+
+    var placed = [];
+    stage.afterRender = function () {
+      var w = stage.width, h = stage.height;
+      placed.length = 0;
+      labelDefs.forEach(function (d, i) {
+        var l = labels[i];
+        tmpV.copy(d.at).project(camera);
+        var sx = (tmpV.x * 0.5 + 0.5) * w;
+        var sy = (-tmpV.y * 0.5 + 0.5) * h;
+        var x = clamp(sx - l.w / 2, 4, w - l.w - 4);
+        var y = sy - l.h - 10;
+        // Nudge a label up if it would cover one already placed
+        for (var n = 0; n < placed.length; n++) {
+          var o = placed[n];
+          if (x < o.x + o.w + 4 && x + l.w + 4 > o.x && y < o.y + o.h + 4 && y + l.h + 4 > o.y) y = o.y - l.h - 6;
+        }
+        y = clamp(y, 4, h - l.h - 4);
+        placed.push({ x: x, y: y, w: l.w, h: l.h });
+        setLabel(l, x, y, clock >= d.show);
+      });
+    };
+
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { measureLabels(labels); stage.requestRender(); });
+    stage.resize();
+    host.classList.add('is-ready');
+    stage.requestRender();
+  }
+
+  /* ---------- Boot ---------- */
+  safely('header', initHeader);
+  safely('menu', initMenu);
+  safely('scroll spy', initScrollSpy);
+  safely('reveal', initReveal);
+  safely('counters', initCounters);
+  safely('tilt', initTilt);
+  safely('copy', initCopy);
+  safely('year', initYear);
+  safely('globe', initGlobe);
+  safely('roadmap', initRoadmap);
+})();
