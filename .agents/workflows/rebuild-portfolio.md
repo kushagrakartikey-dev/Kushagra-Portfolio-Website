@@ -38,7 +38,7 @@ Build the sections and ids in the order set by rule 02.
 
 **Copy to use:**
 - **Value statement:** "I run supply chain operations and measure every change by its result."
-- **About statement:** "Two years across retail operations and supply chain, measured in stock availability, margin and cash."
+- **About statement:** "3+ years across leadership, consulting, business strategy, operations and supply chain, measured in stock availability, margin and cash." A summary follows it: a cross-functional leader and Six Sigma Black Belt, then the roles at Decathlon and DHL, the consulting group's board and the analytics builds.
 - **Contact invitation:** "Working on planning, sourcing, inventory or trade operations? I would like to hear about it."
 
 Write all other copy in plain, confident professional English, and as little of it as the facts allow (rule 01, minimal text): one line per role summary and per project, results as figures with short labels. Use no filler adjectives, and keep every sentence to facts from rule 01.

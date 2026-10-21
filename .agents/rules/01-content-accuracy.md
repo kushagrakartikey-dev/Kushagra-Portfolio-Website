@@ -17,6 +17,7 @@
   - DHL's on DHL yellow, the others on white;
   - with a trademark line in the footer.
 - **No "store-level" (October 2026).** Never describe the work as store-level. Describe it as **retail operations and supply chain**.
+- **Experience span (October 2026).** About says **"3+ years across leadership, consulting, business strategy, operations and supply chain"**, in the owner's words. It counts from HCLTech (June 2023) to DHL (now). Its summary names only roles from this file: leading retail teams at Decathlon, advising the Ugandan coffee cooperative with DHL, the Universal Consulting Group board, the analytics builds, and the Six Sigma Black Belt.
 - **Minimal text (October 2026).** Keep only the important words, and show results as figures and graphics (gauges, before→after bars, reduction bars, unit dots) instead of prose.
 
 ## Accuracy rules

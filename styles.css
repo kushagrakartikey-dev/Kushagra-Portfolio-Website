@@ -727,9 +727,14 @@ button { font: inherit; color: inherit; }
   gap: 3rem clamp(3rem, 6vw, 7rem);
   align-items: start;
 }
-/* The lead stays beside the longer column while it scrolls past (single column below 1024px) */
-.about__lead { position: sticky; top: calc(var(--nav-h) + 2.5rem); }
+/* The lead stays beside the longer column while it scrolls past, on screens tall enough to show
+   all of it (single column below 1024px) */
+@media (min-height: 820px) {
+  .about__lead { position: sticky; top: calc(var(--nav-h) + 2.5rem); }
+}
 .about__lead .statement { margin-top: 2rem; }
+.about__summary { margin-top: 1.5rem; max-width: 36rem; font-size: var(--fs-lead); line-height: 1.6; color: var(--text-soft); }
+.about__summary strong { color: var(--text); font-weight: 600; }
 .about__place {
   display: inline-flex;
   flex-wrap: wrap;

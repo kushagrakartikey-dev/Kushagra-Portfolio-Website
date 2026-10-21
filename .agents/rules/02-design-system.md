@@ -66,7 +66,7 @@ Owner's decisions (October 2026):
    - the globe with a CSS halo, plus two floating dashboards (one on phones);
    - a ledger of three panels with gradient bars and role logos.
 3. **About:**
-   - left (sticky on wide screens): statement (lights word by word) and a location pill;
+   - left (sticky on wide screens at least 820px tall): statement (lights word by word), a summary paragraph with its key phrases in bold, and a location pill;
    - **What I work on, across the value chain:** five stage rows (Plan blue, Source cyan, Make emerald, Deliver amber, Enable coral), each with an icon, three capabilities and one counted result, linked by a gradient line that draws down;
    - **Sectors I can serve:** sixteen chips, then a link to Industries.
 4. **Experience:**
