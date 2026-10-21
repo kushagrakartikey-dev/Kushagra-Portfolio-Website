@@ -26,7 +26,7 @@ Some CSS validators flag `clamp()` and `min()` as invalid. These are standard CS
 Ask the owner before pushing; this action is theirs to approve.
 
 - **Commit authorship.** Every commit is authored and committed by the owner alone, Kushagra Kartikey: no `Co-Authored-By` lines and no tool or agent attributions, in commits or files.
-- **Updating the live site.** The site is already published from `kushagrakartikey-dev/Kushagra-Portfolio-Website` (GitHub Pages, `main`, `/ (root)`). Commit and push to `main`, wait for the "pages build and deployment" run to finish green, then continue at section 4, "Verify live".
+- **Updating the live site.** The site is already published from `kushagrakartikey-dev/portfolio` (GitHub Pages, `main`, `/ (root)`) at `https://kushagrakartikey-dev.github.io/portfolio/`. That is the owner's resume link: keep the repository name, and keep Pages on, because "Unpublish site" or a source of None takes the link down. Commit and push to `main`, wait for the "pages build and deployment" run to finish green, then continue at section 4, "Verify live".
 
 For a first publish, once the owner agrees:
 

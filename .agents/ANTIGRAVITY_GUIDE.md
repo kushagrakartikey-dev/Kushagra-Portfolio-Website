@@ -39,7 +39,7 @@ Read AGENTS.md, every file in .agents/rules/, and look at the screenshots in .ag
 /qa-and-publish
 ```
 
-The site is published from the repository `kushagrakartikey-dev/Kushagra-Portfolio-Website`. The agent will stop and ask before it pushes.
+The site is published from the repository `kushagrakartikey-dev/portfolio` at https://kushagrakartikey-dev.github.io/portfolio/ (renamed from `Kushagra-Portfolio-Website` in October 2026, so the old address no longer works). The agent will stop and ask before it pushes.
 
 ## Path B: rebuild everything from scratch
 
