@@ -67,7 +67,7 @@ Write one IIFE in `'use strict'` mode. Wrap each module in `safely(name, fn)` so
 1. **header** — adds `.is-scrolled`.
 2. **menu** — as specified in rule 03.
 3. **scroll spy** — `aria-current="true"` on the nav link for the section in view.
-4. **split text** — splits the h2s and the footer name into words (letters for one-word headings), keeping a visually hidden full copy.
+4. **split text** — splits the h2s and the footer line into words (letters for one-word headings), keeping a visually hidden full copy; each footer arrow joins the word before it and is read as a comma.
 5. **reveal** — IntersectionObserver plus the scroll-settle failsafe.
 6. **counters** — every `[data-count-to]` figure counts from its before value as it comes into view, in both modes, keeping thousands separators.
 7. **word light** — lights the About statement word by word; skipped under reduced motion.

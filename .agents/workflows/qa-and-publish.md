@@ -60,12 +60,9 @@ On the published URL:
 4. Confirm the globe, the roadmap model and the container yard load, and that the three company logos show inside their tiles.
 5. On a device that asks for reduced motion, confirm the page starts gentle and the Animations switch turns full motion on.
 
-## 5. Optional, after the URL is final
+## 5. Link previews
 
-Ask the owner before adding these. In `<head>`, add:
-
-- `<link rel="canonical" href="<final URL>">`
-- an `og:image` pointing to an absolute URL of a 1200×630 preview image saved in `assets/images/`.
+Done in round 7 for https://kushagrakartikey-dev.github.io/portfolio/: `canonical`, `og:url`, `og:image` (`assets/images/social-card.jpg`, 1200×630) and `twitter:card` `summary_large_image`. If the address ever changes, update all four. After a redesign, re-capture the card from the hero.
 
 ## 6. Report
 

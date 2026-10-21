@@ -308,35 +308,41 @@
     requestScrollFrame();
   }
 
-  /* ---------- Display headings: split into words (letters for one-word headings and the footer
-     name) so each part can stand up in 3D as the heading is revealed. A visually hidden copy keeps
-     the full text for assistive technology; the split copy is aria-hidden. ---------- */
+  /* ---------- Display headings: split into words (letters for one-word headings) so each part can
+     stand up in 3D as the heading is revealed. A visually hidden copy keeps the full text for
+     assistive technology, with the footer's arrows read as commas; the split copy is aria-hidden. ---------- */
   function initSplitText() {
     if (!('IntersectionObserver' in window)) return; // no scroll reveal, so nothing to stagger
-    Array.prototype.forEach.call(document.querySelectorAll('.section-title, .footer__name'), function (el) {
+    Array.prototype.forEach.call(document.querySelectorAll('.section-title, .footer__chain'), function (el) {
       var text = el.textContent.replace(/\s+/g, ' ').trim();
       var words = text.split(' ');
-      var byLetter = words.length === 1 || el.classList.contains('footer__name');
+      var byLetter = words.length === 1;
       var said = document.createElement('span');
       said.className = 'visually-hidden';
-      said.textContent = text;
+      said.textContent = text.replace(/ → /g, ', ');
       var shown = document.createElement('span');
       shown.setAttribute('aria-hidden', 'true');
       var order = 0;
-      words.forEach(function (w, wi) {
-        var word = document.createElement('span');
-        word.className = 'split-word';
+      var word;
+      words.forEach(function (w) {
+        var arrow = w === '→';
+        // An arrow joins the word before it (words never break inside), so it never starts a line
+        if (arrow && word) word.appendChild(document.createTextNode('\u00A0'));
+        else {
+          if (word) shown.appendChild(document.createTextNode(' '));
+          word = document.createElement('span');
+          word.className = 'split-word';
+          shown.appendChild(word);
+        }
         (byLetter ? w.split('') : [w]).forEach(function (piece) {
           var part = document.createElement('span');
-          part.className = 'split-part';
+          part.className = arrow ? 'split-part split-arrow' : 'split-part';
           part.textContent = piece;
           // --n is the part's place, so a gradient can run across the whole heading part by part
           part.style.setProperty('--n', String(order));
           part.style.setProperty('--d', String(order++ * (byLetter ? 28 : 75)));
           word.appendChild(part);
         });
-        shown.appendChild(word);
-        if (wi < words.length - 1) shown.appendChild(document.createTextNode(' '));
       });
       el.textContent = '';
       el.appendChild(said);

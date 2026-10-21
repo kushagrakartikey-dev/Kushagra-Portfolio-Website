@@ -33,7 +33,7 @@ Owner's decisions (October 2026):
 
 ## Type
 
-- **Families:** Source Serif 4 (`--font-serif`: h1, h2, the statements, project titles, every figure, the footer name, the marquee) and Source Sans 3 (`--font-display` and `--font-body`: text, h3/h4, buttons, labels). Both are variable, self-hosted subsets (`assets/fonts`, OFL) that include ₹, → and −, with `font-display: swap`. The serif is pinned at optical size 32.
+- **Families:** Source Serif 4 (`--font-serif`: h1, h2, the statements, project titles, every figure, the footer line, the marquee) and Source Sans 3 (`--font-display` and `--font-body`: text, h3/h4, buttons, labels). Both are variable, self-hosted subsets (`assets/fonts`, OFL) that include ₹, → and −, with `font-display: swap`. The serif is pinned at optical size 32.
 - **Figures:** `font-variant-numeric: var(--figures)` (lining, tabular), weight 600, solid `--text`. Unit words (`.unit`) are in the sans, at 0.46em, muted.
 - **Scale:**
   - h1: `clamp(3.25rem, 1.4rem + 7.2vw, 7.5rem)`, 600, -0.03em; the last name is the same serif at 400;
@@ -94,7 +94,7 @@ Owner's decisions (October 2026):
    - Wide screens: four columns that share rows (subgrid). Two columns below 1200px, one below 600px.
 9. **Education & credentials:** degree cards, leadership and publication cards, nine certificate tiles.
 10. **Contact:** a panel with a slow cobalt light, holding the h2, one line, the email with "Copy email", and six tiles (Resume in cobalt).
-11. **Footer:** the serif name on one line at `min(11vw, 10.25rem)`, a trademark note, and "Back to top".
+11. **Footer** (round 7): "Plan → Source → Make → Deliver → Enable" in the serif, cobalt arrows never starting a line; a sitemap (wordmark, Sections, Connect); the trademark line, "Back to top".
 
 ## Motion
 
@@ -118,7 +118,7 @@ Owner's decisions (October 2026):
 - **Hero (full).** Letters stand up from 72° (32ms stagger). Text rises 28px. The ledger lifts in turn. Dashboards float in, bob and lean from the pointer.
 - **Reveals.**
   - Elements fade; in full motion they also rise 24px from 7°.
-  - Split h2s and the footer name: parts stand up from 64° (fade only in reduced).
+  - Split h2s and the footer line: parts stand up from 64° (fade only in reduced).
   - Staggered lists: tiles at `--k` × 75ms, rising from 12° in full; then their graphics play.
 - **One scroll loop** (reads before writes): word lighting, spine and head, frames, gallery, yard.
 - **Pointer (fine pointers, full motion).**

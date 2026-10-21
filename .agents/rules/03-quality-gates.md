@@ -27,7 +27,7 @@ No change is finished until these pass. Report results honestly: say what you ra
 ## SEO and metadata
 
 - Keep the descriptive title, meta description, viewport, theme-color, Open Graph title and description, and the SVG favicon.
-- Add `canonical` and `og:image` only once the owner confirms the final public URL. An `og:image` must be an absolute URL.
+- `canonical`, `og:url` and `og:image` point at the confirmed address, https://kushagrakartikey-dev.github.io/portfolio/ (the only absolute URLs on the page; previews need them). The card is `assets/images/social-card.jpg`, 1200×630, captured from the hero. A Person JSON-LD block lists only facts on the page.
 
 ## Test matrix (Antigravity browser agent)
 
@@ -38,7 +38,7 @@ At **320, 375, 390, 768, 1024, 1280 and 1440px** check:
 1. `document.documentElement.scrollWidth === clientWidth` (no horizontal scroll).
 2. No clipped or overlapping text, and no stuck hidden reveals after scrolling the whole page.
    - The hero windows never cover the globe caption.
-   - The footer name holds one line.
+   - The footer line holds one line at 1280px and up, and no line starts with an arrow.
 3. No console errors and no failed requests.
 4. The globe, roadmap and yard stages have the class `is-ready`, and every label stays inside its frame.
 5. All six logo images load and sit inside their tiles; no figure breaks across lines.

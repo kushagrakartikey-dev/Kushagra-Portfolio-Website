@@ -126,7 +126,9 @@ body {
 
 h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
 h1, h2 { font-family: var(--font-serif); }
-h3, h4 { font-family: var(--font-display); }
+h3, h4 { font-family: var(--font-display); text-wrap: balance; }
+/* No single word left alone on a paragraph's last line */
+p, dd { text-wrap: pretty; }
 ul, ol { padding: 0; list-style: none; }
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
@@ -1580,30 +1582,65 @@ button { font: inherit; color: inherit; }
   .contact-link--accent:hover { border-color: transparent; background: var(--accent-hover); }
 }
 
-/* 17. Footer: the name at the full width of the page, in the serif */
-.site-footer { border-top: 1px solid var(--line); padding-block: clamp(3rem, 2rem + 4vw, 5.5rem) 2.5rem; overflow: hidden; }
-.footer__inner { display: grid; gap: 2rem; }
-/* Measured at about 7.6 × its size wide in Source Serif 4, so this fits one line at every width
-   from 320px up, capped where the container stops growing */
-.footer__name {
+/* 17. Footer: the value chain as the closing line in the serif, then a three-column sitemap
+   (who, sections, connect) and the legal line */
+.site-footer { border-top: 1px solid var(--line); padding-block: clamp(3rem, 2rem + 4vw, 5.5rem) 2rem; overflow: hidden; }
+.footer__inner { display: grid; gap: clamp(2.5rem, 1.75rem + 2.5vw, 4rem); }
+/* About 17 × its size wide in Source Serif 4, so one line from about 1280px up; below that the
+   stages wrap in balanced lines and an arrow never starts a line */
+.footer__chain {
   width: fit-content;
   max-width: 100%;
   font-family: var(--font-serif);
-  font-size: min(11vw, 10.25rem);
+  font-size: clamp(2rem, 0.9rem + 4.3vw, 4.5rem);
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
 }
-.footer__meta {
+.footer__chain .split-arrow { color: var(--accent); font-weight: 400; }
+.footer__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.7fr);
+  gap: 2.5rem 2rem;
+  padding-top: clamp(2rem, 1.5rem + 1.5vw, 3rem);
+  border-top: 1px solid var(--line);
+}
+.footer__brand .wordmark { margin-bottom: 1rem; }
+.footer__role { font-size: var(--fs-small); line-height: 1.65; color: var(--text-soft); }
+.footer__heading { margin-bottom: 0.6rem; font-size: var(--fs-small); font-weight: 600; color: var(--text); }
+.footer__links { display: grid; gap: 0 2rem; }
+.footer__links--two { grid-template-columns: repeat(2, max-content); }
+.footer__links a {
+  display: inline-block;
+  padding-block: 0.4rem;
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: color var(--dur-ui) var(--ease-out);
+}
+.footer__legal {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: baseline;
   gap: 0.75rem 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
   font-size: var(--fs-small);
   color: var(--text-muted);
 }
-.footer__meta p { max-width: 46rem; }
-.footer__meta a { display: inline-block; padding-block: 0.6rem; color: var(--text); margin-block: -0.6rem; }
+.footer__legal p { max-width: 52rem; }
+.footer__legal a { display: inline-block; padding-block: 0.6rem; margin-block: -0.6rem; color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .footer__links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 0.25em; }
+}
+@media (max-width: 760px) {
+  .footer__grid { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+  .footer__links, .footer__links--two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
+  /* Thumb-sized rows on touch screens */
+  .footer__links a { padding-block: 0.7rem; }
+}
 
 /* 18. Motion ------------------------------------------------------------
    Two modes, set on <html data-motion> before first paint:
@@ -1743,13 +1780,13 @@ button { font: inherit; color: inherit; }
 
 /* Display headings stand up from a deeper tilt in full motion */
 [data-motion="full"].js.reveal-ready .section-title.reveal,
-[data-motion="full"].js.reveal-ready .footer__name.reveal {
+[data-motion="full"].js.reveal-ready .footer__chain.reveal {
   transform: perspective(900px) translate3d(0, 0.3em, 0) rotateX(38deg);
   transition-duration: var(--dur-stand), var(--dur-stand);
 }
 /* Same specificity as the rule above would let the tilt win, so the settled state is stated explicitly */
 [data-motion="full"].js.reveal-ready .section-title.reveal.is-visible,
-[data-motion="full"].js.reveal-ready .footer__name.reveal.is-visible { transform: none; }
+[data-motion="full"].js.reveal-ready .footer__chain.reveal.is-visible { transform: none; }
 
 /* Split headings: the heading itself holds still and each word (or letter) appears in turn:
    standing up in 3D in full motion, fading in the gentle mode. These follow the rules above so they
@@ -2081,10 +2118,10 @@ button { font: inherit; color: inherit; }
   .ledger__item, .metric, .stage, .scope li, .theme, .industry, .card, .cert, .contact-link, .contact__grid, .roadmap, .chips li, .tool-list li, .earlier li {
     background: #fff; color: #000; border-color: #bbb;
   }
-  .hero__line + .hero__line .hero__ch, .footer__name .split-part, .theme__figure, .metric--feature .metric__value { color: #000; background: none; }
+  .hero__line + .hero__line .hero__ch, .footer__chain .split-part, .theme__figure, .metric--feature .metric__value { color: #000; background: none; }
   .impact dd, .impact dd .unit, .stage__figure, .stage__figure .unit, .project__cat, .stage__num { color: #000; }
   .chain::before { display: none; }
   .section-intro, .ledger__label, .ledger__note, .metric__label, .metric__note, .role__title, .role__summary, .theme__principle,
-  .theme__figure-note, .card__detail, .cert__issuer, .project__desc, .industry__proof, .footer__meta,
+  .theme__figure-note, .card__detail, .cert__issuer, .project__desc, .industry__proof, .footer__role, .footer__links a, .footer__legal,
   .stage__list, .stage__note, .impact dt, .impact__note, .about__place-note { color: #333; }
 }

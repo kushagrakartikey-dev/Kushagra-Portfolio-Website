@@ -20,7 +20,7 @@ A single-page static website, published with **GitHub Pages** so anyone with the
 | `script.js` | Motion modes and the Animations switch, menu, scroll spy, reveals, split headings and staggered tiles, one shared scroll loop (word lighting, spine, frames, projects gallery and its steps), counters, tile lean, magnetic buttons, copy email, three.js scenes (globe, roadmap model, container yard) |
 | `README.md` | GitHub Pages deployment guide for the owner |
 | `assets/documents/resume.pdf` | Target of every "Download resume" button |
-| `assets/images/` | Project dashboard screenshots, WebP, `-640` and `-1200` widths |
+| `assets/images/` | Project dashboard screenshots, WebP, `-640` and `-1200` widths; `social-card.jpg` (1200×630 link preview) |
 | `assets/logos/` | Official DHL, Decathlon and BWF logos (SVG, unaltered), shown beside those roles |
 | `assets/fonts/` | Source Serif 4 and Source Sans 3 variable fonts (self-hosted subsets) + OFL licences |
 | `assets/vendor/` | three.js r160 + MIT licence |
@@ -62,6 +62,11 @@ A sixth round (October 2026), at the owner's request ("looks AI slopish; make it
 - no gradient text, glows, neon hues, dot grid or tinted icon tiles; the reading-progress line and the gallery bar are gone;
 - liquid glass only on the header, the gallery's step strip and the motion prompt;
 - every animation and 3D scene kept, with the scenes re-coloured to match.
+
+A seventh round (October 2026), at the owner's request ("refine and fine tune, do not make a lot of changes"; replace the big name at the bottom):
+- the footer closes on the value chain, "Plan → Source → Make → Deliver → Enable", above a three-column sitemap (wordmark and role, Sections, Connect) and the legal line;
+- link previews: canonical address, a 1200×630 social card from the hero, `summary_large_image`, and Person structured data;
+- no lone last words in paragraphs (`text-wrap: pretty`), balanced h3/h4.
 
 Five projects are live, including Inventory Optimization & Replenishment Engine, so `/add-project-card` is done. No task is open. The owner has said **do not** add the `nutricircle-sop-intelligence` project and **no headshot**.
 
