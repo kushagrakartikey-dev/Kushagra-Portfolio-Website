@@ -22,7 +22,7 @@ A single-page static website, published with **GitHub Pages** so anyone with the
 | `assets/documents/resume.pdf` | Target of every "Download resume" button |
 | `assets/images/` | Project dashboard screenshots, WebP, `-640` and `-1200` widths; `social-card.jpg` (1200×630 link preview) |
 | `assets/logos/` | Official DHL, Decathlon and BWF logos (SVG, unaltered), shown beside those roles |
-| `assets/fonts/` | Source Serif 4 and Source Sans 3 variable fonts (self-hosted subsets) + OFL licences |
+| `assets/fonts/` | Sora and Inter variable fonts (self-hosted subsets with ₹ and arrows) + OFL licences |
 | `assets/vendor/` | three.js r160 + MIT licence |
 | `assets/icons/favicon.svg` | KK monogram |
 | `.agents/rules/` | Always-on rules: content accuracy, design system, quality gates |
@@ -67,6 +67,10 @@ A seventh round (October 2026), at the owner's request ("refine and fine tune, d
 - the footer closes on the value chain, "Plan → Source → Make → Deliver → Enable", above a three-column sitemap (wordmark and role, Sections, Connect) and the legal line;
 - link previews: canonical address, a 1200×630 social card from the hero, `summary_large_image`, and Person structured data;
 - no lone last words in paragraphs (`text-wrap: pretty`), balanced h3/h4.
+
+An eighth round (October 2026), at the owner's request ("the 2:05 pm version was more visually appealing; blend the two"):
+- the round 4–5 look is back: Sora and Inter, the blue → cyan → emerald gradient (last name, buttons, logo mark, spine, bars), stage and industry hues, the aurora and the brighter 3D scenes;
+- kept from rounds 6–7: no progress bars, figures in solid ink with tabular digits, liquid glass on the header, gallery strip and motion prompt, no hero dot grid, the value-chain footer, link previews and tidy line breaks.
 
 Five projects are live, including Inventory Optimization & Replenishment Engine, so `/add-project-card` is done. No task is open. The owner has said **do not** add the `nutricircle-sop-intelligence` project and **no headshot**.
 

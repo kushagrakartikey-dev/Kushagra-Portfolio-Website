@@ -16,11 +16,11 @@ Act as senior frontend engineer, UI/UX designer, accessibility specialist, perfo
 
 ## Phase 2 — Assets
 
-1. **Fonts.** From the Google Fonts releases, take `SourceSerif4[opsz,wght].ttf` and `SourceSans3[wght].ttf`. With fontTools, pin the serif at `opsz=32` and `wght=400:700`. Subset both to Latin plus U+20B9 (₹), U+2190–2193 and U+2212, keeping `kern, liga, tnum, lnum, pnum` and the other default features. Save them as WOFF2: `assets/fonts/source-serif-4.woff2` and `source-sans-3.woff2`. Keep each OFL licence as `OFL-SourceSerif4.txt` and `OFL-SourceSans3.txt`.
+1. **Fonts.** From the Google Fonts releases, take `Sora[wght].ttf` and `Inter[opsz,wght].ttf`. With fontTools, pin Inter at `opsz=14`. Subset both to Latin plus U+20B9 (₹), U+2190–2193 and U+2212, keeping `kern, liga, calt, tnum, lnum, pnum` and the other default features. Save them as WOFF2: `assets/fonts/sora.woff2` and `inter.woff2`, with `OFL-Sora.txt` and `OFL-Inter.txt`. Sora has no ₹ or arrows, so `--font-display` lists Inter second.
 2. **three.js.** Get the r160 classic build from the npm package `three@0.160.0`, at `build/three.min.js`. Save it to `assets/vendor/three.min.js` with the MIT licence. Its first statement is a `console.warn('Scripts "build/three.js"…')` deprecation notice; replace that call (and only that call) with `void 0`. Keep the licence comment.
 3. **Land mask.** Run `pip install global-land-mask`. Load `globe_combined_mask_compressed.npz`, whose `mask` array is True for water, with row 0 at 90°N and column 0 at 180°W. Downsample it to 240×120 by block mean, treating a cell as land when its water fraction is below 0.35. Invert it so 1 means land, then `numpy.packbits` it row by row and base64 encode the result (about 4,800 characters). Paste the string into `script.js` as `LAND_MASK`.
 4. **Project screenshots.** Open each live dashboard at 1440×900, wait for the charts to render, and capture the first screen. Crop to 16:10 from the top-left. Save each as WebP at 1200 and 640 pixels wide, named `assets/images/project-<sop|sourcing|procurement|lean-six-sigma>-<width>.webp`. If the procurement dashboard does not load, use `docs/images/dashboard_compliance.png` from its repository instead.
-5. **Favicon.** Make `assets/icons/favicon.svg`: a cobalt (`#2F64D6`) rounded square with "KK" in white, in a serif.
+5. **Favicon.** Make `assets/icons/favicon.svg`: a blue → cyan → emerald rounded square with "KK" in dark ink.
 6. **Logos.** Save the official DHL, Decathlon and BWF logos as served on each organisation's own website (dhl.com's header `dhl-logo.svg`, decathlon.in's header logo, bwfbadminton.com's `logo-bwf-rgb.svg`) to `assets/logos/dhl.svg`, `decathlon.svg` and `bwf.svg`. Use them unaltered: strip only scripts or tracking attributes, and check they contain no `<script>` or event handlers.
 7. **Resume.** Use the owner's own PDF if they provide one. Otherwise typeset a two-page A4 PDF from the resume text, applying the exclusions in rule 01 (no CGPA, no Lucknow University, no badminton or competitions, no Lovable link). Print it with headless Chromium to `assets/documents/resume.pdf`, then ask the owner to review it.
 
@@ -45,7 +45,7 @@ Write all other copy in plain, confident professional English, and as little of 
 
 ## Phase 4 — Build `styles.css`
 
-Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels, tile light), navigation (liquid glass), buttons, hero (cobalt light, globe, floating windows, ledger), about (value chain, sector chips), experience (spine and head, metric tiles and their graphics, roadmap), projects gallery, skills (marquee, yard), strategy cards, industries, education cards, contact panel, footer, motion (two modes), responsive, print. The page ground is `--bg`, tiles `--surface`.
+Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels, tile light), navigation (liquid glass), buttons, hero (aurora, globe, floating windows, ledger), about (value chain, sector chips), experience (spine and head, metric tiles and their graphics, roadmap), projects gallery, skills (marquee, yard), strategy cards, industries, education cards, contact panel, footer, motion (two modes), responsive, print. The page ground is `--bg`, tiles `--surface`.
 
 Breakpoints:
 - 1200px: navigation collapses to the menu button;
@@ -84,7 +84,7 @@ Write one IIFE in `'use strict'` mode. Wrap each module in `safely(name, fn)` so
 15. **roadmap** — the capacity-roadmap model, as specified in rule 02; built only as it approaches the screen.
 16. **yard** — the Skills container yard, as specified in rule 02; built only as it approaches the screen.
 
-Progress, word light, spine, showcase and yard share one scroll loop (`onScroll`): each reads layout and returns a write, and all reads run before any write in the same frame.
+Word light, spine, showcase, gallery and yard share one scroll loop (`onScroll`): each reads layout and returns a write, and all reads run before any write in the same frame.
 
 ## Phase 6 — Test and refine
 
