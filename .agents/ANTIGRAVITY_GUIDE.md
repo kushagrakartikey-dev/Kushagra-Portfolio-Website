@@ -6,7 +6,7 @@ This folder already contains everything Antigravity's agent needs to understand,
 | --- | --- |
 | `AGENTS.md` | Read automatically when you open the folder: the project brief and status |
 | `.agents/rules/01-content-accuracy.md` | Always-on rule: your decisions (no CGPA, no Lucknow University, no badminton or competitions, no headshot, no NutriCircle; DHL and BWF names and logos; minimal text) and every verified fact, metric and link |
-| `.agents/rules/02-design-system.md` | Always-on rule: the bright dark theme, Sora and Inter, layout, result graphics, the two motion modes and the three three.js scenes (globe, roadmap model, container yard) |
+| `.agents/rules/02-design-system.md` | Always-on rule: the consulting-style dark theme (navy, one cobalt accent), Source Serif 4 and Source Sans 3, layout, result graphics, the two motion modes and the three three.js scenes (globe, roadmap model, container yard) |
 | `.agents/rules/03-quality-gates.md` | Always-on rule: accessibility, performance and the test checklist |
 | `.agents/workflows/add-project-card.md` | Run with `/add-project-card` |
 | `.agents/workflows/qa-and-publish.md` | Run with `/qa-and-publish` |

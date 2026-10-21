@@ -2,7 +2,7 @@
 
 A single-page portfolio for Kushagra Kartikey, Supply Chain & Operations Professional (Delhi, India, open to relocation).
 
-It is plain HTML, CSS and JavaScript, in a dark theme with a bright blue → cyan → emerald palette, Sora and Inter type, results shown as graphics (gauges, before→after bars, unit dots) rather than paragraphs, and three interactive 3D scenes built in three.js:
+It is plain HTML, CSS and JavaScript, in a dark theme styled like a consulting firm's site (navy with one cobalt accent, Source Serif 4 headings and figures, Source Sans 3 text), results shown as graphics (gauges, before→after bars, unit dots) rather than paragraphs, and three interactive 3D scenes built in three.js:
 - a globe of where the work has run;
 - a model of the coffee cooperative's capacity roadmap;
 - a container yard where a gantry crane stacks one container for each tool in the Skills list.
@@ -25,10 +25,10 @@ kushagra-kartikey-portfolio-3d/
     ├── icons/
     │   └── favicon.svg        Browser tab icon
     ├── fonts/
-    │   ├── sora-latin.woff2      Sora (headings), hosted locally
-    │   ├── inter-latin.woff2     Inter (text), hosted locally
-    │   ├── OFL-Sora.txt          Sora licence (SIL Open Font License)
-    │   └── OFL-Inter.txt         Inter licence (SIL Open Font License)
+    │   ├── source-serif-4.woff2  Source Serif 4 (headings and figures), hosted locally
+    │   ├── source-sans-3.woff2   Source Sans 3 (text), hosted locally
+    │   ├── OFL-SourceSerif4.txt  Source Serif 4 licence (SIL Open Font License)
+    │   └── OFL-SourceSans3.txt   Source Sans 3 licence (SIL Open Font License)
     └── vendor/
         ├── three.min.js       three.js r160, hosted locally (powers the 3D scenes)
         └── three.LICENSE.txt  three.js licence (MIT)
@@ -126,17 +126,17 @@ Common updates:
 
 Around the scenes, the page itself moves in depth:
 - **Hero:**
-  - a soft aurora of colour drifts behind the page;
-  - the letters of your name stand up one by one, with the last name in the gradient;
-  - two of your live dashboards float behind the glowing globe;
+  - one soft cobalt light drifts slowly behind the page;
+  - the letters of your name stand up one by one, in a serif;
+  - two of your live dashboards float behind the globe;
   - the buttons drift slightly toward the mouse.
 - **Headings and About:** headings rise word by word, and the About statement lights up word by word as you read. Beside it, your work runs across the value chain (Plan, Source, Make, Deliver, Enable), each stage with one result that counts up, joined by a line that draws down; sixteen sector chips follow.
-- **Experience:** an amber line runs down the roles as you pass them. Each role shows its company logo, and its results arrive as tiles one after another: gauges sweep to their percentage, reduction bars shrink, dots appear one by one and every figure counts up.
+- **Experience:** a cobalt line runs down the roles as you pass them. Each role shows its company logo, and its results arrive as tiles one after another: gauges sweep to their percentage, reduction bars shrink, dots appear one by one and every figure counts up.
 - **Projects:** on a computer or a landscape iPad, the section pins in place and your scrolling slides the five projects sideways like a coverflow, each turning in 3D as it reaches the centre, with a counter (1 / 5), a step for each project that jumps to it, and a progress bar. Each project leads with its industry, the business problem it answers and three results in large figures, labelled as modelled on synthetic data. Each has its own colour and sits in a browser frame showing its live address. Frames lean toward the mouse and can be spun with a drag before they spring back. On phones the projects stack.
 - **Skills:** two rows of your skills and tools glide past in opposite directions above the container yard.
 - **Industries:** sixteen tiles in four colour-coded groups (consumer and retail, industrial and manufacturing, trade and logistics, services and sustainability), each naming the role, project or certificate behind it.
-- **Tiles everywhere** (results, strategy, industries, education, certificates) lean slightly toward the mouse in 3D, with a gradient edge and a soft light that follows the pointer.
-- **Header:** a thin amber line shows how far down the page you are.
+- **Tiles everywhere** (results, strategy, industries, education, certificates) lean slightly toward the mouse in 3D, with a cobalt edge and a faint light that follows the pointer.
+- **Header and floating panels:** a sparing "liquid glass" finish (translucent, blurred, with a bright rim) on the header, the strip under the projects and the motion prompt. There is no progress bar.
 
 **Animations switch and reduced motion.** The header has an **Animations** switch:
 - **On** is full motion.
@@ -184,7 +184,7 @@ Around the scenes, the page itself moves in depth:
 
 ## Credits
 
-- Typefaces: Sora and Inter, SIL Open Font License (`assets/fonts/OFL-Sora.txt`, `assets/fonts/OFL-Inter.txt`), from the Fontsource packages.
+- Typefaces: Source Serif 4 and Source Sans 3, SIL Open Font License (`assets/fonts/OFL-SourceSerif4.txt`, `assets/fonts/OFL-SourceSans3.txt`), subset from the Google Fonts releases.
 - 3D library: three.js, MIT License (`assets/vendor/three.LICENSE.txt`).
 - Land outline data: NOAA GLOBE dataset.
 - Company logos: DHL (Deutsche Post AG), Decathlon (Decathlon SE) and BWF (Badminton World Federation) are trademarks of their owners. Each file is the official logo as served on that organisation's own website, used unaltered to identify a past role.

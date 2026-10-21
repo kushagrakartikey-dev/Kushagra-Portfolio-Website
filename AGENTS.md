@@ -17,12 +17,12 @@ A single-page static website, published with **GitHub Pages** so anyone with the
 | --- | --- |
 | `index.html` | All content and structure. **The source of truth for wording.** |
 | `styles.css` | Design tokens (section 2) and all styling |
-| `script.js` | Motion modes and the Animations switch, menu, scroll spy, reveals, split headings and staggered tiles, one shared scroll loop (progress, word lighting, spine, frames, projects gallery and its steps), counters, tile lean, magnetic buttons, copy email, three.js scenes (globe, roadmap model, container yard) |
+| `script.js` | Motion modes and the Animations switch, menu, scroll spy, reveals, split headings and staggered tiles, one shared scroll loop (word lighting, spine, frames, projects gallery and its steps), counters, tile lean, magnetic buttons, copy email, three.js scenes (globe, roadmap model, container yard) |
 | `README.md` | GitHub Pages deployment guide for the owner |
 | `assets/documents/resume.pdf` | Target of every "Download resume" button |
 | `assets/images/` | Project dashboard screenshots, WebP, `-640` and `-1200` widths |
 | `assets/logos/` | Official DHL, Decathlon and BWF logos (SVG, unaltered), shown beside those roles |
-| `assets/fonts/` | Sora and Inter variable fonts (self-hosted) + OFL licences |
+| `assets/fonts/` | Source Serif 4 and Source Sans 3 variable fonts (self-hosted subsets) + OFL licences |
 | `assets/vendor/` | three.js r160 + MIT licence |
 | `assets/icons/favicon.svg` | KK monogram |
 | `.agents/rules/` | Always-on rules: content accuracy, design system, quality gates |
@@ -56,6 +56,12 @@ A fifth round (October 2026), at the owner's request ("impactful and industry dr
 - project cards led by their industry, the business problem and three modelled results from each README, with steps under the gallery that jump to a project;
 - About's "What I work on" as a value chain (Plan, Source, Make, Deliver, Enable), each stage with three capabilities and one result from a role;
 - sixteen sectors: chips in About, and an Industries section in four groups with the evidence for each.
+
+A sixth round (October 2026), at the owner's request ("looks AI slopish; make it more professional and industry centric; keep the animations; remove the progress bar"):
+- consulting-firm styling: navy ink with one cobalt accent, Source Serif 4 headings and figures (lining, tabular), Source Sans 3 text;
+- no gradient text, glows, neon hues, dot grid or tinted icon tiles; the reading-progress line and the gallery bar are gone;
+- liquid glass only on the header, the gallery's step strip and the motion prompt;
+- every animation and 3D scene kept, with the scenes re-coloured to match.
 
 Five projects are live, including Inventory Optimization & Replenishment Engine, so `/add-project-card` is done. No task is open. The owner has said **do not** add the `nutricircle-sop-intelligence` project and **no headshot**.
 

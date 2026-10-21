@@ -3,7 +3,7 @@
    Vanilla JavaScript, no build step. Every module is optional: if one fails,
    the page content stays visible and the rest keeps working.
    Modules: header, menu, scroll spy, split headings, reveal, counters, one
-   shared scroll loop (progress line, word lighting, timeline spine, project
+   shared scroll loop (word lighting, timeline spine, project
    frames), floating windows, tile lean, copy email, footer year, and three 3D
    scenes built with three.js (loaded lazily from assets/vendor): the hero
    globe, the capacity-roadmap model and the container yard.
@@ -346,19 +346,6 @@
     });
   }
 
-  /* ---------- Reading progress along the foot of the header ---------- */
-  function initProgress() {
-    var bar = document.querySelector('.scroll-progress__bar');
-    if (!bar) return;
-    var shown = -1;
-    onScroll(function (vh) {
-      var max = document.documentElement.scrollHeight - vh;
-      var p = max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
-      if (Math.abs(p - shown) < 0.0005) return null;
-      return function () { shown = p; bar.style.transform = 'scaleX(' + p.toFixed(4) + ')'; };
-    });
-  }
-
   /* ---------- The About statement lights word by word as it moves up the screen ---------- */
   function initWordLight() {
     var el = document.querySelector('[data-light]');
@@ -573,7 +560,7 @@
 
   /* ---------- Projects gallery: on wide screens the section pins under the header and the scroll
      slides the projects sideways, one scrolled pixel to one pixel of travel. Each card turns in 3D by
-     its distance from the centre, like a coverflow, and the count, steps and bar follow; each step
+     its distance from the centre, like a coverflow, and the count and steps follow; each step
      jumps to its project. Elsewhere, under reduced motion, or when the screen is too short to hold a
      whole card, the projects stay a stacked list. Keyboard focus inside a card scrolls the page until
      that card is centred, so a focused link is never off to the side. ---------- */
@@ -586,7 +573,6 @@
     var cards = Array.prototype.slice.call(track.children);
     var faces = cards.map(function (c) { return c.querySelector('.project__card'); });
     var steps = Array.prototype.slice.call(gallery.querySelectorAll('.gallery__step'));
-    var bar = gallery.querySelector('.gallery__bar i');
     var count = gallery.querySelector('.gallery__count b');
     var query = window.matchMedia('(min-width: 1024px) and (min-height: 620px)');
     var on = false, top = 0, travel = 0, vw = 0, pinTop = 0, centres = [], current = -1;
@@ -636,8 +622,6 @@
           f.style.transform = 'rotateY(' + (-t * 24).toFixed(2) + 'deg) translateZ(' + (-a * 140).toFixed(1) + 'px) scale(' + (1 - a * 0.06).toFixed(4) + ')';
           f.style.opacity = (1 - a * 0.5).toFixed(3);
         });
-        // The bar starts under the first step and reaches the end with the last card
-        if (bar) bar.style.transform = 'scaleX(' + (1 / cards.length + p * (1 - 1 / cards.length)).toFixed(4) + ')';
         if (idx !== current) {
           if (cards[current]) cards[current].classList.remove('is-current');
           if (steps[current]) { steps[current].classList.remove('is-current'); steps[current].removeAttribute('aria-current'); }
@@ -1194,7 +1178,7 @@
   function buildGlobe(host) {
     var THREE = window.THREE;
     // Lanes in cyan (the coffee export lane in emerald), places in amber, land shaded blue to cyan
-    var COLOR_LANE = 0x22D3EE, COLOR_EXPORT = 0x34D399, COLOR_HOT = 0xDFFBFF, COLOR_PLACE = 0xFFB648;
+    var COLOR_LANE = 0x8FB4FF, COLOR_EXPORT = 0xE8EEFF, COLOR_HOT = 0xFFFFFF, COLOR_PLACE = 0xE3AE55;
     var R = 1;
     var small = window.innerWidth < 600;
     var baseZ = small ? 4.2 : 4.6;
@@ -1226,7 +1210,7 @@
     // Ocean body: opaque, so dots and arcs on the far side are hidden by depth
     spin.add(new THREE.Mesh(
       new THREE.SphereGeometry(R * 0.985, 64, 48),
-      new THREE.MeshBasicMaterial({ color: 0x0B1D44 })
+      new THREE.MeshBasicMaterial({ color: 0x0C1C36 })
     ));
 
     // Atmosphere: a halo just outside the outline that fades to nothing, and a bright rim on the
@@ -1263,7 +1247,7 @@
       '  float k = pow(clamp(-dot(normalize(vN), normalize(vV)), 0.0, 1.0), 1.7) * uStrength;',
       '  gl_FragColor = vec4(uColor * k, k);',
       '}'
-    ].join('\n'), 0x2B8CFF, THREE.BackSide);
+    ].join('\n'), 0x3F74E0, THREE.BackSide);
     scene.add(new THREE.Mesh(new THREE.SphereGeometry(R * 1.2, 64, 48), haloMat));
     var rimMat = glowMaterial([
       'uniform vec3 uColor;',
@@ -1274,13 +1258,13 @@
       '  float k = pow(1.0 - clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0), 3.2) * uStrength;',
       '  gl_FragColor = vec4(uColor * k, k);',
       '}'
-    ].join('\n'), 0x5FE3FF, THREE.FrontSide);
+    ].join('\n'), 0x8FB4FF, THREE.FrontSide);
     var rim = new THREE.Mesh(new THREE.SphereGeometry(R * 1.002, 64, 48), rimMat);
     rim.renderOrder = 4;
     scene.add(rim);
 
     // Silhouette ring: a faint hairline laid exactly on the sphere's visible outline, facing the camera
-    var ringMat = new THREE.MeshBasicMaterial({ color: 0x9FE9FF, transparent: true, opacity: 0, depthWrite: false });
+    var ringMat = new THREE.MeshBasicMaterial({ color: 0xBFD3FF, transparent: true, opacity: 0, depthWrite: false });
     var silhouette = new THREE.Mesh(new THREE.RingGeometry(1, 1.006, 192), ringMat);
     scene.add(silhouette);
     function placeSilhouette() {
@@ -1322,7 +1306,7 @@
     landGeo.setAttribute('aLift', new THREE.Float32BufferAttribute(lifts, 1));
     var intro = { value: 0 };
     // Built-in materials expect working (linear) colour, which THREE.Color converts to from hex
-    var landSouth = { value: new THREE.Color(0x4D8DFF) }, landNorth = { value: new THREE.Color(0x7FEBFF) };
+    var landSouth = { value: new THREE.Color(0x4F7FE0) }, landNorth = { value: new THREE.Color(0x9DBBFF) };
     var landMat = new THREE.PointsMaterial({
       color: 0xFFFFFF,
       size: small ? 0.05 : 0.042,
@@ -1676,13 +1660,13 @@
     var stage = createStage(host, 26);
     var scene = stage.scene, camera = stage.camera;
 
-    // Colour-coded by role: farms emerald, washing stations blue, the container roadmap amber,
-    // lanes cyan with amber flow; the recommended stations stay dark with cyan dashed edges
-    var NAVY = 0x0B1426, BLUE = 0x4D8DFF, CYAN = 0x22D3EE, AMBER = 0xFFB648;
+    // Colour-coded by role: farms in a muted green, washing stations cobalt, the container roadmap in
+    // muted amber, lanes pale cobalt with amber flow; the recommended stations stay dark with dashed edges
+    var NAVY = 0x0C1A2C, BLUE = 0x5B8DEF, CYAN = 0x8FB4FF, AMBER = 0xE3AE55;
     var C = {
-      farm: 0x34D399,
+      farm: 0x6FBF9A,
       grid: mixHex(NAVY, CYAN, 0.16),
-      pad: mixHex(NAVY, 0x060B18, 0.7),
+      pad: mixHex(NAVY, 0x07111F, 0.7),
       solidTop: mixHex(BLUE, 0xFFFFFF, 0.18),
       solidLit: BLUE,
       solidShade: mixHex(BLUE, NAVY, 0.42),
@@ -1697,7 +1681,7 @@
       boxEdge: AMBER,
       road: mixHex(NAVY, CYAN, 0.55),
       accent: AMBER,
-      accentBright: 0xFFD08A
+      accentBright: 0xF0C77E
     };
 
     // Layout in world units; the flow runs along +x
@@ -2167,7 +2151,7 @@
       started = true;
       // The labels are painted in the page's typeface, so give it a moment to arrive first
       var font = document.fonts && document.fonts.load
-        ? Promise.race([document.fonts.load('700 160px "Sora"'), new Promise(function (r) { window.setTimeout(r, 1500); })])
+        ? Promise.race([document.fonts.load('700 160px "Source Sans 3"'), new Promise(function (r) { window.setTimeout(r, 1500); })])
         : Promise.resolve();
       Promise.all([loadThree(), font]).then(function () { buildYard(host); }).catch(function (err) {
         host.classList.add('is-unavailable');
@@ -2193,12 +2177,13 @@
     var chips = toolList ? Array.prototype.slice.call(toolList.querySelectorAll('li')) : [];
     var wide = window.matchMedia('(min-width: 1024px)');
 
-    var NAVY = 0x0B1426, NAVY_950 = 0x060B18, NAVY_700 = 0x172848, SOFT = 0xB6C2D9, INK = 0x06101F;
-    var ACCENT = 0xFFB648, CYAN = 0x22D3EE;
-    // One bright livery per tool, all with dark ink: SAP blue, WMS cyan, Excel emerald, Power BI amber,
-    // Tableau coral, MySQL ice, Python periwinkle, RPA teal
-    var LIVERY = [[0x4D8DFF, INK], [CYAN, INK], [0x34D399, INK], [ACCENT, INK],
-                  [0xFF7A66, INK], [0xE6EEFF, INK], [0x8B9CFF, INK], [0x2DD4BF, INK]];
+    var NAVY = 0x0C1A2C, NAVY_950 = 0x07111F, NAVY_700 = 0x182C44, SOFT = 0xB6C0CE, INK = 0x06101D, CHALK = 0xF1F4F8;
+    var ACCENT = 0xE3AE55, CYAN = 0x8FB4FF;
+    // One livery per tool in the muted colours of real shipping containers, each with the ink that
+    // reads on it: SAP cobalt, WMS steel, Excel green, Power BI ochre, Tableau rust, MySQL light grey,
+    // Python navy, RPA olive
+    var LIVERY = [[0x3767C9, CHALK], [0x5D6F86, CHALK], [0x2E7D55, CHALK], [0xD9A441, INK],
+                  [0xB5523B, CHALK], [0xCFD6DF, INK], [0x2C4A7A, CHALK], [0x6F7F52, CHALK]];
     // A 20 ft container's proportions (6.06 × 2.59 × 2.44 m)
     var L = 1.5, H = 0.64, W = 0.6, GAP = 0.06;
     var STACK_X = -1.25, PICK_X = 1.95, LEG_X = 3.15, LEG_Z = 0.62, LEG_H = 3.9;
@@ -2289,7 +2274,7 @@
       c.width = 1024;
       c.height = Math.round(1024 * labelH / labelW);
       var ctx = c.getContext('2d');
-      var family = '"Sora", "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
+      var family = '"Source Sans 3", "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
       var size = Math.round(c.height * 0.62);
       ctx.font = '700 ' + size + 'px ' + family;
       while (ctx.measureText(text).width > c.width * 0.9 && size > 40) {
@@ -2490,7 +2475,6 @@
   safely('split text', initSplitText);
   safely('reveal', initReveal);
   safely('counters', initCounters);
-  safely('progress', initProgress);
   safely('word light', initWordLight);
   safely('spine', initSpine);
   safely('float windows', initFloatWindows);

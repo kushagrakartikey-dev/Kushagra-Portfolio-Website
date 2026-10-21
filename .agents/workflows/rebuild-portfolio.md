@@ -16,11 +16,11 @@ Act as senior frontend engineer, UI/UX designer, accessibility specialist, perfo
 
 ## Phase 2 — Assets
 
-1. **Fonts.** From the npm packages `@fontsource-variable/sora` and `@fontsource-variable/inter` (5.3.0), take `files/sora-latin-wght-normal.woff2` and `files/inter-latin-wght-normal.woff2`. Save them as `assets/fonts/sora-latin.woff2` and `inter-latin.woff2`, with each package's OFL licence as `OFL-Sora.txt` and `OFL-Inter.txt`.
+1. **Fonts.** From the Google Fonts releases, take `SourceSerif4[opsz,wght].ttf` and `SourceSans3[wght].ttf`. With fontTools, pin the serif at `opsz=32` and `wght=400:700`. Subset both to Latin plus U+20B9 (₹), U+2190–2193 and U+2212, keeping `kern, liga, tnum, lnum, pnum` and the other default features. Save them as WOFF2: `assets/fonts/source-serif-4.woff2` and `source-sans-3.woff2`. Keep each OFL licence as `OFL-SourceSerif4.txt` and `OFL-SourceSans3.txt`.
 2. **three.js.** Get the r160 classic build from the npm package `three@0.160.0`, at `build/three.min.js`. Save it to `assets/vendor/three.min.js` with the MIT licence. Its first statement is a `console.warn('Scripts "build/three.js"…')` deprecation notice; replace that call (and only that call) with `void 0`. Keep the licence comment.
 3. **Land mask.** Run `pip install global-land-mask`. Load `globe_combined_mask_compressed.npz`, whose `mask` array is True for water, with row 0 at 90°N and column 0 at 180°W. Downsample it to 240×120 by block mean, treating a cell as land when its water fraction is below 0.35. Invert it so 1 means land, then `numpy.packbits` it row by row and base64 encode the result (about 4,800 characters). Paste the string into `script.js` as `LAND_MASK`.
 4. **Project screenshots.** Open each live dashboard at 1440×900, wait for the charts to render, and capture the first screen. Crop to 16:10 from the top-left. Save each as WebP at 1200 and 640 pixels wide, named `assets/images/project-<sop|sourcing|procurement|lean-six-sigma>-<width>.webp`. If the procurement dashboard does not load, use `docs/images/dashboard_compliance.png` from its repository instead.
-5. **Favicon.** Make `assets/icons/favicon.svg`: a navy rounded square with "KK" in off-white and a short amber bar.
+5. **Favicon.** Make `assets/icons/favicon.svg`: a cobalt (`#2F64D6`) rounded square with "KK" in white, in a serif.
 6. **Logos.** Save the official DHL, Decathlon and BWF logos as served on each organisation's own website (dhl.com's header `dhl-logo.svg`, decathlon.in's header logo, bwfbadminton.com's `logo-bwf-rgb.svg`) to `assets/logos/dhl.svg`, `decathlon.svg` and `bwf.svg`. Use them unaltered: strip only scripts or tracking attributes, and check they contain no `<script>` or event handlers.
 7. **Resume.** Use the owner's own PDF if they provide one. Otherwise typeset a two-page A4 PDF from the resume text, applying the exclusions in rule 01 (no CGPA, no Lucknow University, no badminton or competitions, no Lovable link). Print it with headless Chromium to `assets/documents/resume.pdf`, then ask the owner to review it.
 
@@ -45,7 +45,7 @@ Write all other copy in plain, confident professional English, and as little of 
 
 ## Phase 4 — Build `styles.css`
 
-Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels, tile light), navigation and progress line, buttons, hero (aurora, globe, floating windows, ledger), about (value chain, sector chips), experience (spine and head, metric tiles and their graphics, roadmap), projects gallery, skills (marquee, yard), strategy cards, industries, education cards, contact panel, footer, motion (two modes), responsive, print. The page ground is `--bg`, tiles `--surface`.
+Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels, tile light), navigation (liquid glass), buttons, hero (cobalt light, globe, floating windows, ledger), about (value chain, sector chips), experience (spine and head, metric tiles and their graphics, roadmap), projects gallery, skills (marquee, yard), strategy cards, industries, education cards, contact panel, footer, motion (two modes), responsive, print. The page ground is `--bg`, tiles `--surface`.
 
 Breakpoints:
 - 1200px: navigation collapses to the menu button;
@@ -70,20 +70,19 @@ Write one IIFE in `'use strict'` mode. Wrap each module in `safely(name, fn)` so
 4. **split text** — splits the h2s and the footer name into words (letters for one-word headings), keeping a visually hidden full copy.
 5. **reveal** — IntersectionObserver plus the scroll-settle failsafe.
 6. **counters** — every `[data-count-to]` figure counts from its before value as it comes into view, in both modes, keeping thousands separators.
-7. **progress** — the header's reading-progress line.
-8. **word light** — lights the About statement word by word; skipped under reduced motion.
-9. **spine** — fills the timeline spine and marks each role as reached.
-10. **float windows** — the hero windows lean from a mouse pointer by depth.
-11. **showcase** — project frames straighten toward mid-screen, lean toward a mouse, spin when dragged and spring back.
-12. **gallery** — pins the projects on wide screens with full motion and slides them as a coverflow; the steps jump to a card and focus centres one; if a card cannot fit the pinned view, the list stays.
-12a. **lean** — `[data-lean]` tiles lean toward a mouse in 3D and set the spotlight position (fine pointers, full motion).
-12b. **magnetic** — `[data-magnet]` buttons drift toward the pointer.
+7. **word light** — lights the About statement word by word; skipped under reduced motion.
+8. **spine** — fills the timeline spine and marks each role as reached.
+9. **float windows** — the hero windows lean from a mouse pointer by depth.
+10. **showcase** — project frames straighten toward mid-screen, lean toward a mouse, spin when dragged and spring back.
+11. **gallery** — pins the projects on wide screens with full motion and slides them as a coverflow; the steps jump to a card and focus centres one; if a card cannot fit the pinned view, the list stays.
+11a. **lean** — `[data-lean]` tiles lean toward a mouse in 3D and set the spotlight position (fine pointers, full motion).
+11b. **magnetic** — `[data-magnet]` buttons drift toward the pointer.
 12c. **motion toggle** and **idle animations** — the Animations switch; pausing off-screen CSS animations.
-13. **copy email** — shown only when the Clipboard API exists in a secure context; announces through a `role="status"` region.
-14. **year** — footer year.
-15. **globe** — as specified in rule 02.
-16. **roadmap** — the capacity-roadmap model, as specified in rule 02; built only as it approaches the screen.
-17. **yard** — the Skills container yard, as specified in rule 02; built only as it approaches the screen.
+12. **copy email** — shown only when the Clipboard API exists in a secure context; announces through a `role="status"` region.
+13. **year** — footer year.
+14. **globe** — as specified in rule 02.
+15. **roadmap** — the capacity-roadmap model, as specified in rule 02; built only as it approaches the screen.
+16. **yard** — the Skills container yard, as specified in rule 02; built only as it approaches the screen.
 
 Progress, word light, spine, showcase and yard share one scroll loop (`onScroll`): each reads layout and returns a write, and all reads run before any write in the same frame.
 
