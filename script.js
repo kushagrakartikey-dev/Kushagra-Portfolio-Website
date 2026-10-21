@@ -15,7 +15,26 @@
   var motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
 
-  function reducedMotion() { return !!(motionQuery && motionQuery.matches); }
+  /* Motion has two modes, set on <html data-motion> before first paint (see index.html):
+     "full", and "reduced", a gentle mode that keeps fades, counts and fills but drops travel, turns,
+     spin and parallax. A system request for reduced motion starts the page reduced; the Animations
+     switch lets any visitor choose, and the choice is remembered. */
+  function reducedMotion() { return root.getAttribute('data-motion') === 'reduced'; }
+  function savedMotion() {
+    try { var m = window.localStorage.getItem('motion'); return m === 'full' || m === 'reduced' ? m : null; }
+    catch (e) { return null; }
+  }
+  function setMotion(mode, remember) {
+    if (root.getAttribute('data-motion') === mode) return;
+    root.setAttribute('data-motion', mode);
+    if (remember) { try { window.localStorage.setItem('motion', mode); } catch (e) { /* private mode */ } }
+    window.dispatchEvent(new Event('motionchange'));
+  }
+  if (!root.getAttribute('data-motion')) root.setAttribute('data-motion', motionQuery && motionQuery.matches ? 'reduced' : 'full');
+  // Follow a change to the system setting, unless the visitor has made their own choice
+  if (motionQuery && motionQuery.addEventListener) {
+    motionQuery.addEventListener('change', function (e) { if (!savedMotion()) setMotion(e.matches ? 'reduced' : 'full', false); });
+  }
   function finePointer() { return !!(finePointerQuery && finePointerQuery.matches); }
 
   function warn(name, err) {
@@ -99,7 +118,7 @@
     if (!header || !toggle || !menu) return;
 
     var label = toggle.querySelector('.menu-toggle__label');
-    var desktop = window.matchMedia('(min-width: 1100px)');
+    var desktop = window.matchMedia('(min-width: 1200px)');
 
     function setOpen(open, returnFocus) {
       header.setAttribute('data-menu', open ? 'open' : 'closed');
@@ -228,7 +247,7 @@
   /* ---------- Counters: each figure counts from its "before" reading to the result as it comes
      into view; the hero's keep time with the ledger's entrance, the rest with their tile's ---------- */
   function initCounters() {
-    if (reducedMotion() || !('IntersectionObserver' in window)) return; // final values are already in the HTML
+    if (!('IntersectionObserver' in window)) return; // final values are already in the HTML
     var nodes = document.querySelectorAll('[data-count-to]');
     var duration = 1400;
 
@@ -238,13 +257,18 @@
       var decimals = parseInt(node.getAttribute('data-decimals') || '0', 10);
       var finalText = node.textContent;
       if (isNaN(from) || isNaN(to)) return;
+      // A figure written with thousands separators (1,899) keeps them while it counts
+      var grouped = finalText.indexOf(',') >= 0;
+      function show(v) {
+        node.textContent = grouped ? v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : v.toFixed(decimals);
+      }
 
-      node.textContent = from.toFixed(decimals);
+      show(from);
       var start = null;
       function frame(now) {
         if (start === null) start = now + delay;
         var t = Math.min(Math.max((now - start) / duration, 0), 1);
-        node.textContent = (from + (to - from) * easeInOut(t)).toFixed(decimals);
+        show(from + (to - from) * easeInOut(t));
         if (t < 1) window.requestAnimationFrame(frame);
         else node.textContent = finalText;
       }
@@ -306,6 +330,8 @@
           var part = document.createElement('span');
           part.className = 'split-part';
           part.textContent = piece;
+          // --n is the part's place, so a gradient can run across the whole heading part by part
+          part.style.setProperty('--n', String(order));
           part.style.setProperty('--d', String(order++ * (byLetter ? 28 : 75)));
           word.appendChild(part);
         });
@@ -315,6 +341,7 @@
       el.textContent = '';
       el.appendChild(said);
       el.appendChild(shown);
+      el.style.setProperty('--count', String(Math.max(2, order)));
       el.classList.add('split');
     });
   }
@@ -335,7 +362,7 @@
   /* ---------- The About statement lights word by word as it moves up the screen ---------- */
   function initWordLight() {
     var el = document.querySelector('[data-light]');
-    if (!el || reducedMotion()) return;
+    if (!el) return;
     var words = el.textContent.trim().split(/\s+/);
     el.textContent = '';
     var spans = words.map(function (w, i) {
@@ -367,6 +394,7 @@
   function initSpine() {
     var wrap = document.querySelector('.timeline-wrap');
     var fill = wrap && wrap.querySelector('.timeline__fill');
+    var head = wrap && wrap.querySelector('.timeline__head');
     if (!fill) return;
     var roles = Array.prototype.slice.call(wrap.querySelectorAll('.role'));
     var dotOffset = 64;
@@ -381,8 +409,11 @@
       var r = wrap.getBoundingClientRect();
       var p = clamp((line - r.top) / r.height, 0, 1);
       var reached = roles.map(function (role) { return role.getBoundingClientRect().top + dotOffset <= line; });
+      var headY = p * r.height;
       return function () {
         fill.style.transform = 'scaleY(' + p.toFixed(4) + ')';
+        // A glowing head rides the end of the fill
+        if (head) head.style.transform = 'translate3d(0,' + headY.toFixed(1) + 'px,0)';
         roles.forEach(function (role, i) { role.classList.toggle('is-reached', reached[i]); });
       };
     });
@@ -540,6 +571,111 @@
     });
   }
 
+  /* ---------- Projects gallery: on wide screens the section pins under the header and the scroll
+     slides the projects sideways, one scrolled pixel to one pixel of travel. Each card turns in 3D by
+     its distance from the centre, like a coverflow, and the count, steps and bar follow; each step
+     jumps to its project. Elsewhere, under reduced motion, or when the screen is too short to hold a
+     whole card, the projects stay a stacked list. Keyboard focus inside a card scrolls the page until
+     that card is centred, so a focused link is never off to the side. ---------- */
+  function initGallery() {
+    var gallery = document.querySelector('[data-gallery]');
+    if (!gallery || !('IntersectionObserver' in window)) return;
+    var pin = gallery.querySelector('.gallery__pin');
+    var track = gallery.querySelector('.projects');
+    var progress = gallery.querySelector('.gallery__progress');
+    var cards = Array.prototype.slice.call(track.children);
+    var faces = cards.map(function (c) { return c.querySelector('.project__card'); });
+    var steps = Array.prototype.slice.call(gallery.querySelectorAll('.gallery__step'));
+    var bar = gallery.querySelector('.gallery__bar i');
+    var count = gallery.querySelector('.gallery__count b');
+    var query = window.matchMedia('(min-width: 1024px) and (min-height: 620px)');
+    var on = false, top = 0, travel = 0, vw = 0, pinTop = 0, centres = [], current = -1;
+
+    function setOn(next) {
+      if (next === on) return;
+      on = next;
+      gallery.classList.toggle('is-active', on);
+      if (on) return;
+      gallery.style.height = '';
+      track.style.transform = '';
+      faces.forEach(function (f) { f.style.transform = ''; f.style.opacity = ''; });
+      cards.forEach(function (c) { c.classList.remove('is-current'); });
+      steps.forEach(function (s) { s.classList.remove('is-current'); s.removeAttribute('aria-current'); });
+      current = -1;
+    }
+
+    function measure() {
+      setOn(query.matches && !reducedMotion());
+      // The pinned view must hold a whole card and the steps beneath it; if it cannot, keep the list
+      if (on && track.offsetHeight + progress.offsetHeight + (parseFloat(window.getComputedStyle(pin).rowGap) || 0) > pin.clientHeight) setOn(false);
+      if (!on) return;
+      vw = pin.clientWidth;
+      travel = Math.max(0, track.scrollWidth - vw);
+      pinTop = parseFloat(window.getComputedStyle(pin).top) || 0;
+      gallery.style.height = (pin.offsetHeight + travel) + 'px';
+      top = gallery.getBoundingClientRect().top + window.scrollY;
+      centres = cards.map(function (c) { return c.offsetLeft + c.offsetWidth / 2; });
+      requestScrollFrame();
+    }
+
+    // The page position at which card i sits in the centre
+    function scrollFor(i) {
+      return top - pinTop + clamp((centres[i] - vw / 2) / travel, 0, 1) * travel;
+    }
+
+    onScroll(function () {
+      if (!on) return null;
+      var p = travel > 0 ? clamp((window.scrollY + pinTop - top) / travel, 0, 1) : 0;
+      var x = -p * travel;
+      var turns = centres.map(function (c) { return clamp((c + x - vw / 2) / (vw * 0.62), -1, 1); });
+      var idx = Math.round(p * (cards.length - 1));
+      return function () {
+        track.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0)';
+        faces.forEach(function (f, i) {
+          var t = turns[i], a = Math.abs(t);
+          f.style.transform = 'rotateY(' + (-t * 24).toFixed(2) + 'deg) translateZ(' + (-a * 140).toFixed(1) + 'px) scale(' + (1 - a * 0.06).toFixed(4) + ')';
+          f.style.opacity = (1 - a * 0.5).toFixed(3);
+        });
+        // The bar starts under the first step and reaches the end with the last card
+        if (bar) bar.style.transform = 'scaleX(' + (1 / cards.length + p * (1 - 1 / cards.length)).toFixed(4) + ')';
+        if (idx !== current) {
+          if (cards[current]) cards[current].classList.remove('is-current');
+          if (steps[current]) { steps[current].classList.remove('is-current'); steps[current].removeAttribute('aria-current'); }
+          current = idx;
+          cards[current].classList.add('is-current');
+          if (steps[current]) { steps[current].classList.add('is-current'); steps[current].setAttribute('aria-current', 'step'); }
+          if (count) count.textContent = String(current + 1);
+        }
+      };
+    });
+
+    steps.forEach(function (step, i) {
+      step.addEventListener('click', function () {
+        if (!on || travel <= 0) return;
+        window.scrollTo({ top: scrollFor(i), behavior: 'smooth' });
+      });
+    });
+
+    track.addEventListener('focusin', function (e) {
+      if (!on) return;
+      var i = cards.indexOf(e.target.closest('.project'));
+      if (i < 0 || travel <= 0) return;
+      // The browser scrolls a newly focused element into view after this event, so wait a frame,
+      // then undo any offset it gave the clipped box and scroll the page to centre the card
+      window.requestAnimationFrame(function () {
+        pin.scrollLeft = 0;
+        window.scrollTo({ top: scrollFor(i), behavior: 'auto' });
+      });
+    });
+
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('load', measure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    if (query.addEventListener) query.addEventListener('change', measure);
+    window.addEventListener('motionchange', measure);
+  }
+
   /* ---------- Tiles lean toward a mouse pointer in 3D and settle back when it leaves. One listener
      serves every [data-lean] element; bigger tiles lean less, so their far edge stays close to the page.
      The tile's box is measured when the pointer arrives, so its own lean never feeds back. ---------- */
@@ -588,11 +724,89 @@
       s.max = clamp(1100 / Math.max(box.width, box.height), 1.5, 6);
       s.tx = clamp((e.clientX - box.left) / box.width - 0.5, -0.5, 0.5) * 2;
       s.ty = clamp((e.clientY - box.top) / box.height - 0.5, -0.5, 0.5) * 2;
+      // The tile's spotlight (styles.css) follows the pointer
+      el.style.setProperty('--mx', (e.clientX - box.left).toFixed(0) + 'px');
+      el.style.setProperty('--my', (e.clientY - box.top).toFixed(0) + 'px');
       track(s);
     }, { passive: true });
     // A scroll moves the tile under a still pointer, so measure it again on the next move
     window.addEventListener('scroll', function () { box = null; }, { passive: true });
     document.documentElement.addEventListener('pointerleave', function () { release(current); current = null; });
+  }
+
+  /* ---------- Magnetic buttons: [data-magnet] buttons drift a few pixels toward a mouse pointer and
+     settle back when it leaves. The offset uses the CSS translate property, so the press scale on
+     transform stays independent. ---------- */
+  function initMagnetic() {
+    if (!finePointerQuery) return;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-magnet]'), function (btn) {
+      var x = 0, y = 0, tx = 0, ty = 0, raf = 0, last = 0;
+      function frame(time) {
+        raf = 0;
+        var dt = last ? Math.min(0.05, (time - last) / 1000) : 1 / 60;
+        last = time;
+        var k = 1 - Math.exp(-dt * 12);
+        x += (tx - x) * k;
+        y += (ty - y) * k;
+        if (Math.abs(tx - x) + Math.abs(ty - y) < 0.05) { x = tx; y = ty; last = 0; }
+        else raf = window.requestAnimationFrame(frame);
+        btn.style.translate = (x || y) ? x.toFixed(2) + 'px ' + y.toFixed(2) + 'px' : '';
+      }
+      function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
+      btn.addEventListener('pointermove', function (e) {
+        if (e.pointerType !== 'mouse' || !finePointer() || reducedMotion()) return;
+        // Measure the resting box, without the button's own drift
+        var r = btn.getBoundingClientRect();
+        tx = ((e.clientX - (r.left - x)) / r.width - 0.5) * 10;
+        ty = ((e.clientY - (r.top - y)) / r.height - 0.5) * 8;
+        kick();
+      });
+      btn.addEventListener('pointerleave', function () { tx = 0; ty = 0; kick(); });
+    });
+  }
+
+  /* ---------- Continuous CSS animations (the auroras, the marquee) pause while out of view, so the
+     compositor does no work for what nobody can see ---------- */
+  function initIdleAnimations() {
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) { entry.target.classList.toggle('is-idle', !entry.isIntersecting); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.hero, .marquee, .contact__grid'), function (el) { io.observe(el); });
+  }
+
+  /* ---------- Animations switch: turns full motion on or off for this visitor and remembers it ---------- */
+  function initMotionToggle() {
+    var btn = document.querySelector('[data-motion-toggle]');
+    if (!btn) return;
+    function sync() { btn.setAttribute('aria-pressed', String(!reducedMotion())); }
+    btn.hidden = false;
+    sync();
+    btn.addEventListener('click', function () { setMotion(reducedMotion() ? 'full' : 'reduced', true); });
+    window.addEventListener('motionchange', sync);
+  }
+
+  /* ---------- Motion note: on a device that asks for reduced motion, a small prompt offers the full
+     animations until the visitor chooses. Either answer is remembered, so it never returns. ---------- */
+  function initMotionNote() {
+    var note = document.querySelector('[data-motion-note]');
+    if (!note) return;
+    var answered = false;
+    function update() {
+      note.hidden = answered || !!savedMotion() || !reducedMotion() || !(motionQuery && motionQuery.matches);
+    }
+    note.querySelector('[data-motion-on]').addEventListener('click', function () {
+      answered = true;
+      setMotion('full', true);
+      update();
+    });
+    note.querySelector('[data-motion-keep]').addEventListener('click', function () {
+      answered = true;
+      try { window.localStorage.setItem('motion', 'reduced'); } catch (e) { /* private mode: this visit only */ }
+      update();
+    });
+    window.addEventListener('motionchange', function () { if (savedMotion()) answered = true; update(); });
+    update();
   }
 
   /* ---------- Copy email: progressive enhancement, shown only when the Clipboard API exists ---------- */
@@ -735,7 +949,7 @@
       }).observe(host);
     }
     document.addEventListener('visibilitychange', function () { if (!document.hidden) stage.requestRender(); });
-    if (motionQuery && motionQuery.addEventListener) motionQuery.addEventListener('change', stage.requestRender);
+    window.addEventListener('motionchange', stage.requestRender);
     if ('ResizeObserver' in window) new ResizeObserver(stage.resize).observe(host);
     else window.addEventListener('resize', stage.resize);
 
@@ -979,7 +1193,8 @@
 
   function buildGlobe(host) {
     var THREE = window.THREE;
-    var COLOR_ACCENT = 0xE5A53A, COLOR_ACCENT_BRIGHT = 0xF6C46A;
+    // Lanes in cyan (the coffee export lane in emerald), places in amber, land shaded blue to cyan
+    var COLOR_LANE = 0x22D3EE, COLOR_EXPORT = 0x34D399, COLOR_HOT = 0xDFFBFF, COLOR_PLACE = 0xFFB648;
     var R = 1;
     var small = window.innerWidth < 600;
     var baseZ = small ? 4.2 : 4.6;
@@ -1011,11 +1226,61 @@
     // Ocean body: opaque, so dots and arcs on the far side are hidden by depth
     spin.add(new THREE.Mesh(
       new THREE.SphereGeometry(R * 0.985, 64, 48),
-      new THREE.MeshBasicMaterial({ color: 0x15263D })
+      new THREE.MeshBasicMaterial({ color: 0x0B1D44 })
     ));
 
+    // Atmosphere: a halo just outside the outline that fades to nothing, and a bright rim on the
+    // globe's own edge. Both add light (premultiplied, additive), so they glow over the page behind.
+    var glowVertex = [
+      'varying vec3 vN;',
+      'varying vec3 vV;',
+      'void main() {',
+      '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+      '  vN = normalize(normalMatrix * normal);',
+      '  vV = normalize(-mv.xyz);',
+      '  gl_Position = projectionMatrix * mv;',
+      '}'
+    ].join('\n');
+    function glowMaterial(fragment, color, side) {
+      var m = new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: srgb(THREE, color) }, uStrength: { value: 0 } },
+        vertexShader: glowVertex,
+        fragmentShader: fragment,
+        side: side,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false
+      });
+      m.premultipliedAlpha = true;
+      return m;
+    }
+    var haloMat = glowMaterial([
+      'uniform vec3 uColor;',
+      'uniform float uStrength;',
+      'varying vec3 vN;',
+      'varying vec3 vV;',
+      'void main() {',
+      '  float k = pow(clamp(-dot(normalize(vN), normalize(vV)), 0.0, 1.0), 1.7) * uStrength;',
+      '  gl_FragColor = vec4(uColor * k, k);',
+      '}'
+    ].join('\n'), 0x2B8CFF, THREE.BackSide);
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R * 1.2, 64, 48), haloMat));
+    var rimMat = glowMaterial([
+      'uniform vec3 uColor;',
+      'uniform float uStrength;',
+      'varying vec3 vN;',
+      'varying vec3 vV;',
+      'void main() {',
+      '  float k = pow(1.0 - clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0), 3.2) * uStrength;',
+      '  gl_FragColor = vec4(uColor * k, k);',
+      '}'
+    ].join('\n'), 0x5FE3FF, THREE.FrontSide);
+    var rim = new THREE.Mesh(new THREE.SphereGeometry(R * 1.002, 64, 48), rimMat);
+    rim.renderOrder = 4;
+    scene.add(rim);
+
     // Silhouette ring: a faint hairline laid exactly on the sphere's visible outline, facing the camera
-    var ringMat = new THREE.MeshBasicMaterial({ color: 0xF5F4F0, transparent: true, opacity: 0, depthWrite: false });
+    var ringMat = new THREE.MeshBasicMaterial({ color: 0x9FE9FF, transparent: true, opacity: 0, depthWrite: false });
     var silhouette = new THREE.Mesh(new THREE.RingGeometry(1, 1.006, 192), ringMat);
     scene.add(silhouette);
     function placeSilhouette() {
@@ -1056,8 +1321,10 @@
     landGeo.setAttribute('aDelay', new THREE.Float32BufferAttribute(delays, 1));
     landGeo.setAttribute('aLift', new THREE.Float32BufferAttribute(lifts, 1));
     var intro = { value: 0 };
+    // Built-in materials expect working (linear) colour, which THREE.Color converts to from hex
+    var landSouth = { value: new THREE.Color(0x4D8DFF) }, landNorth = { value: new THREE.Color(0x7FEBFF) };
     var landMat = new THREE.PointsMaterial({
-      color: 0xC9D3E0,
+      color: 0xFFFFFF,
       size: small ? 0.05 : 0.042,
       sizeAttenuation: true,
       map: new THREE.CanvasTexture(dotCanvas),
@@ -1065,19 +1332,24 @@
       alphaTest: 0.35,
       depthWrite: false
     });
-    // Extends the stock points shader: the gathering intro, plus dots that thin and dim toward the rim
+    // Extends the stock points shader: the gathering intro, dots that thin and dim toward the rim,
+    // and a tint from blue in the south to cyan in the north
     landMat.onBeforeCompile = function (shader) {
       shader.uniforms.uIntro = intro;
+      shader.uniforms.uSouth = landSouth;
+      shader.uniforms.uNorth = landNorth;
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', [
           '#include <common>',
           'attribute float aDelay;',
           'attribute float aLift;',
           'uniform float uIntro;',
-          'varying float vShade;'
+          'varying float vShade;',
+          'varying float vLat;'
         ].join('\n'))
         .replace('#include <begin_vertex>', [
           '#include <begin_vertex>',
+          'vLat = normalize(position).y;',
           'float kIn = clamp((uIntro - aDelay) / 0.5, 0.0, 1.0);',
           'float eIn = 1.0 - pow(1.0 - kIn, 4.0);',
           'transformed *= 1.0 + aLift * (1.0 - eIn);'
@@ -1093,8 +1365,12 @@
           '#include <logdepthbuf_vertex>'
         ].join('\n'));
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vShade;')
-        .replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\ndiffuseColor.a *= vShade;');
+        .replace('#include <common>', '#include <common>\nvarying float vShade;\nvarying float vLat;\nuniform vec3 uSouth;\nuniform vec3 uNorth;')
+        .replace('#include <alphatest_fragment>', [
+          '#include <alphatest_fragment>',
+          'diffuseColor.rgb *= mix(uSouth, uNorth, smoothstep(-0.55, 0.8, vLat));',
+          'diffuseColor.a *= vShade;'
+        ].join('\n'));
     };
     spin.add(new THREE.Points(landGeo, landMat));
 
@@ -1106,12 +1382,12 @@
     Object.keys(PLACES).forEach(function (key, order) {
       var p = PLACES[key];
       var pos = toVec3(p.lat, p.lon, R * 1.004);
-      var dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: COLOR_ACCENT, transparent: true, opacity: 0 }));
+      var dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: COLOR_PLACE, transparent: true, opacity: 0 }));
       dot.position.copy(pos);
       spin.add(dot);
 
       var ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
-        color: COLOR_ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false
+        color: COLOR_PLACE, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false
       }));
       ring.position.copy(pos).multiplyScalar(1.002);
       ring.quaternion.setFromUnitVectors(zAxis, pos.clone().normalize());
@@ -1140,8 +1416,8 @@
       var curve = new THREE.CatmullRomCurve3(pts);
       var mat = new THREE.ShaderMaterial({
         uniforms: {
-          uColor: { value: srgb(THREE, COLOR_ACCENT) },
-          uHot: { value: srgb(THREE, COLOR_ACCENT_BRIGHT) },
+          uColor: { value: srgb(THREE, primary ? COLOR_EXPORT : COLOR_LANE) },
+          uHot: { value: srgb(THREE, COLOR_HOT) },
           uDraw: { value: 0 },
           uHead: { value: -1 },
           uTail: { value: primary ? 0.24 : 0.18 },
@@ -1159,7 +1435,7 @@
 
       var traveller = new THREE.Mesh(
         new THREE.SphereGeometry(primary ? 0.016 : 0.011, 12, 10),
-        new THREE.MeshBasicMaterial({ color: COLOR_ACCENT_BRIGHT, transparent: true, opacity: 0 })
+        new THREE.MeshBasicMaterial({ color: COLOR_HOT, transparent: true, opacity: 0 })
       );
       traveller.renderOrder = 3;
       spin.add(traveller);
@@ -1270,6 +1546,10 @@
       camera.position.z = baseZ + 1.1 * (1 - arrive) + scrolled * 0.8;
       placeSilhouette();
       ringMat.opacity = 0.14 * smoothstep(0.4, 1.5, t);
+      // The atmosphere brightens as the globe gathers
+      var air = smoothstep(0.2, 1.6, t);
+      haloMat.uniforms.uStrength.value = 0.85 * air;
+      rimMat.uniforms.uStrength.value = 0.9 * air;
 
       keys.forEach(function (key) {
         var m = markers[key];
@@ -1396,23 +1676,28 @@
     var stage = createStage(host, 26);
     var scene = stage.scene, camera = stage.camera;
 
-    // Tones derived from the tokens: navy field, on-dark text tone, amber accent
-    var NAVY = 0x0E1B2E, NAVY_700 = 0x213650, SOFT = 0xB7C1CF;
+    // Colour-coded by role: farms emerald, washing stations blue, the container roadmap amber,
+    // lanes cyan with amber flow; the recommended stations stay dark with cyan dashed edges
+    var NAVY = 0x0B1426, BLUE = 0x4D8DFF, CYAN = 0x22D3EE, AMBER = 0xFFB648;
     var C = {
-      farm: 0xC9D3E0,
-      grid: mixHex(NAVY, SOFT, 0.17),
-      pad: mixHex(NAVY, 0x0A1524, 0.85),
-      solidTop: mixHex(NAVY_700, SOFT, 0.3),
-      solidLit: mixHex(NAVY_700, SOFT, 0.14),
-      solidShade: NAVY_700,
-      solidEdge: mixHex(NAVY, SOFT, 0.62),
-      ghostTop: mixHex(NAVY, NAVY_700, 0.9),
-      ghostLit: mixHex(NAVY, NAVY_700, 0.6),
-      ghostShade: mixHex(NAVY, NAVY_700, 0.35),
-      ghostEdge: mixHex(NAVY, SOFT, 0.72),
-      road: mixHex(NAVY, SOFT, 0.32),
-      accent: 0xE5A53A,
-      accentBright: 0xF0B54E
+      farm: 0x34D399,
+      grid: mixHex(NAVY, CYAN, 0.16),
+      pad: mixHex(NAVY, 0x060B18, 0.7),
+      solidTop: mixHex(BLUE, 0xFFFFFF, 0.18),
+      solidLit: BLUE,
+      solidShade: mixHex(BLUE, NAVY, 0.42),
+      solidEdge: 0xB9D3FF,
+      ghostTop: mixHex(NAVY, CYAN, 0.16),
+      ghostLit: mixHex(NAVY, CYAN, 0.1),
+      ghostShade: mixHex(NAVY, CYAN, 0.05),
+      ghostEdge: CYAN,
+      boxTop: mixHex(NAVY, AMBER, 0.26),
+      boxLit: mixHex(NAVY, AMBER, 0.17),
+      boxShade: mixHex(NAVY, AMBER, 0.09),
+      boxEdge: AMBER,
+      road: mixHex(NAVY, CYAN, 0.55),
+      accent: AMBER,
+      accentBright: 0xFFD08A
     };
 
     // Layout in world units; the flow runs along +x
@@ -1574,8 +1859,8 @@
     for (var c = 0; c < ROADMAP.containers; c++) {
       var layer = Math.floor(c / 10), rest = c % 10;
       var col = rest % 2, row = Math.floor(rest / 2);
-      var mesh = new THREE.Mesh(boxGeo, faceMaterial(C.ghostTop, C.ghostLit, C.ghostShade, 14));
-      var outline = edges(boxGeo, C.ghostEdge, true, 0.07);
+      var mesh = new THREE.Mesh(boxGeo, faceMaterial(C.boxTop, C.boxLit, C.boxShade, 14));
+      var outline = edges(boxGeo, C.boxEdge, true, 0.07);
       var box = new THREE.Group();
       box.add(mesh, outline);
       box.position.set(
@@ -1882,7 +2167,7 @@
       started = true;
       // The labels are painted in the page's typeface, so give it a moment to arrive first
       var font = document.fonts && document.fonts.load
-        ? Promise.race([document.fonts.load('600 160px "Instrument Sans"'), new Promise(function (r) { window.setTimeout(r, 1500); })])
+        ? Promise.race([document.fonts.load('700 160px "Sora"'), new Promise(function (r) { window.setTimeout(r, 1500); })])
         : Promise.resolve();
       Promise.all([loadThree(), font]).then(function () { buildYard(host); }).catch(function (err) {
         host.classList.add('is-unavailable');
@@ -1908,10 +2193,12 @@
     var chips = toolList ? Array.prototype.slice.call(toolList.querySelectorAll('li')) : [];
     var wide = window.matchMedia('(min-width: 1024px)');
 
-    var NAVY = 0x0E1B2E, NAVY_950 = 0x0A1524, NAVY_700 = 0x213650, SOFT = 0xB7C1CF, PAPER = 0xF5F4F0, ACCENT = 0xE5A53A;
-    // Container and label colours, alternating through the palette
-    var LIVERY = [[ACCENT, NAVY], [SOFT, NAVY], [PAPER, NAVY], [NAVY_700, PAPER],
-                  [SOFT, NAVY], [ACCENT, NAVY], [NAVY_700, PAPER], [PAPER, NAVY]];
+    var NAVY = 0x0B1426, NAVY_950 = 0x060B18, NAVY_700 = 0x172848, SOFT = 0xB6C2D9, INK = 0x06101F;
+    var ACCENT = 0xFFB648, CYAN = 0x22D3EE;
+    // One bright livery per tool, all with dark ink: SAP blue, WMS cyan, Excel emerald, Power BI amber,
+    // Tableau coral, MySQL ice, Python periwinkle, RPA teal
+    var LIVERY = [[0x4D8DFF, INK], [CYAN, INK], [0x34D399, INK], [ACCENT, INK],
+                  [0xFF7A66, INK], [0xE6EEFF, INK], [0x8B9CFF, INK], [0x2DD4BF, INK]];
     // A 20 ft container's proportions (6.06 × 2.59 × 2.44 m)
     var L = 1.5, H = 0.64, W = 0.6, GAP = 0.06;
     var STACK_X = -1.25, PICK_X = 1.95, LEG_X = 3.15, LEG_Z = 0.62, LEG_H = 3.9;
@@ -1962,7 +2249,7 @@
     dotGeo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(new Array(count).fill(1), 1));
     var dotUniforms = {
       uTime: { value: 100 }, uSize: { value: 0.02 }, uHalfHeight: { value: 300 }, uRise: { value: 0 },
-      uColor: { value: srgb(THREE, mixHex(NAVY, SOFT, 0.2)) }, uOpacity: { value: 1 }
+      uColor: { value: srgb(THREE, mixHex(NAVY, CYAN, 0.3)) }, uOpacity: { value: 1 }
     };
     world.add(new THREE.Points(dotGeo, new THREE.ShaderMaterial({
       uniforms: dotUniforms, vertexShader: DOT_VERTEX, fragmentShader: DOT_FRAGMENT, transparent: true, depthWrite: false
@@ -1971,7 +2258,7 @@
     pad(L + 0.6, W + 0.5, PICK_X);
 
     // Gantry crane: two portal frames joined by girders. The moving parts, trolley and spreader, are amber.
-    var steel = face(mixHex(NAVY_700, SOFT, 0.4));
+    var steel = face(mixHex(NAVY_700, SOFT, 0.55));
     [-1, 1].forEach(function (sx) {
       [-1, 1].forEach(function (sz) { block(0.14, LEG_H, 0.14, sx * LEG_X, LEG_H / 2, sz * LEG_Z, steel); });
       block(0.18, 0.12, LEG_Z * 2 + 0.2, sx * LEG_X, 0.06, 0, steel);
@@ -2002,12 +2289,12 @@
       c.width = 1024;
       c.height = Math.round(1024 * labelH / labelW);
       var ctx = c.getContext('2d');
-      var family = '"Instrument Sans", "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
+      var family = '"Sora", "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
       var size = Math.round(c.height * 0.62);
-      ctx.font = '600 ' + size + 'px ' + family;
+      ctx.font = '700 ' + size + 'px ' + family;
       while (ctx.measureText(text).width > c.width * 0.9 && size > 40) {
         size -= 6;
-        ctx.font = '600 ' + size + 'px ' + family;
+        ctx.font = '700 ' + size + 'px ' + family;
       }
       ctx.fillStyle = '#' + ('00000' + ink.toString(16)).slice(-6);
       ctx.textAlign = 'center';
@@ -2129,7 +2416,7 @@
     function markTools(placed) {
       if (placed === landed) return;
       landed = placed;
-      if (!reducedMotion()) chips.forEach(function (chip, i) { chip.classList.toggle('is-stacked', i < placed); });
+      chips.forEach(function (chip, i) { chip.classList.toggle('is-stacked', i < placed); });
     }
     function landedAt(p) { return clamp(Math.floor(p * containers.length - 0.86) + 1, 0, containers.length); }
     onScroll(function (vh) {
@@ -2155,7 +2442,7 @@
     } else {
       playing = true;
     }
-    if (toolList && !reducedMotion()) toolList.classList.add('is-linked');
+    if (toolList) toolList.classList.add('is-linked');
 
     // Drag to turn the yard; it eases back to its framed view after a pause
     var turn = dragToTurn(host, stage, { az: 0.4, down: -0.05, up: 0.12 });
@@ -2208,7 +2495,12 @@
   safely('spine', initSpine);
   safely('float windows', initFloatWindows);
   safely('showcase', initShowcase);
+  safely('gallery', initGallery);
   safely('lean', initLean);
+  safely('magnetic', initMagnetic);
+  safely('motion toggle', initMotionToggle);
+  safely('motion note', initMotionNote);
+  safely('idle animations', initIdleAnimations);
   safely('copy', initCopy);
   safely('year', initYear);
   safely('globe', initGlobe);

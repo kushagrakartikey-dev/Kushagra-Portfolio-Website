@@ -5,12 +5,13 @@ No change is finished until these pass. Report results honestly: say what you ra
 ## Accessibility (WCAG 2.2 AA)
 
 - Landmarks: `header`, `nav`, `main`, `footer`; one `h1`; every section has an `h2`; skip link to `#main`.
-- Visible focus: 3px amber outline everywhere (the whole site is dark).
+- Visible focus: 3px cyan outline everywhere (the whole site is dark).
 - Mobile menu: a `<button>` with `aria-expanded` and `aria-controls="site-menu"`. Escape closes it and returns focus to the button. It also closes after a link is chosen and on an outside click. When closed, its links are not focusable (`visibility: hidden`).
 - Every image has real alt text. Decorative images use `alt=""` inside an `aria-hidden` wrapper: the hero's floating windows, and the logo tiles, whose company name is always in the text beside them. Icons and metric graphics are `aria-hidden`; the figure and label next to them carry the meaning.
 - Every 3D canvas is `aria-hidden`; its figcaption carries the information.
 - Split text keeps one readable copy: the hero name and split headings put their letter or word spans in an `aria-hidden` copy, beside a visually hidden full copy.
-- Contrast is at least 4.5:1 for text and 3:1 for focus rings. The lowest text pairing is `--on-dark-muted` on `--navy-700`, at 4.8:1.
+- Contrast is at least 4.5:1 for text and 3:1 for focus rings. The lowest text pairing is `--text-muted` on `--surface-3`, at 5.3:1. Dark ink on every bright fill is at least 6.1:1.
+- Motion: the **Animations switch** (`aria-pressed`) lets any visitor stop all continuous movement (globe spin, marquee, aurora), as WCAG 2.2.2 requires. A system request for reduced motion starts the gentle mode.
 - Touch targets are at least 44px. Never disable zoom.
 - Without JavaScript, all content is visible and the menu shows as a plain list.
 
@@ -20,6 +21,7 @@ No change is finished until these pass. Report results honestly: say what you ra
 - Project images are WebP with `srcset` (640/1200), `width`/`height`, `loading="lazy"` and `decoding="async"`. The hero's floating windows reuse the 640px files, without lazy loading, because they are on the first screen.
 - three.js loads after page load, once for all three scenes. The roadmap and the yard build only as they approach the screen. Every render loop stops off screen and in hidden tabs.
 - Scroll-linked effects share one `requestAnimationFrame` loop that reads layout before it writes.
+- Continuous CSS animations (auroras, marquee) pause while out of view (`.is-idle`).
 - Animate only `transform` and `opacity`.
 
 ## SEO and metadata
@@ -43,19 +45,26 @@ At **320, 375, 390, 768, 1024, 1280 and 1440px** check:
 
 Interaction checks:
 
-6. Every nav link and both hero CTAs land with the section heading just below the sticky bar (wait for the smooth scroll to settle before measuring).
+6. Every nav link (eight, including Industries) and both hero CTAs land with the section's first block just below the sticky bar. That block is the heading, the marquee in Skills, or the panel in Contact. Jump instantly when testing; the final position matches a smooth scroll's.
 7. The mobile menu opens, closes on Escape, closes on select and closes on an outside click.
 8. Keyboard Tab order runs skip link → wordmark → nav, with focus always visible.
 9. The resume download saves `Kushagra_Kartikey_Resume.pdf`.
 10. All project images load.
-11. Reduced motion:
-    - every element, including every staggered tile, is at opacity 1 without scrolling;
+11. Reduced motion (the gentle mode):
+    - nothing travels or turns: every reveal, tile, split heading and hero letter keeps `transform: none`;
+    - the gallery is off (a list);
+    - everything is visible after scrolling;
     - every scene is still, in its final state (no continuous render loop);
-    - the roadmap and yard still turn when dragged, then ease back and stop.
+    - the roadmap and yard still turn when dragged, then ease back and stop;
+    - the Animations switch turns full motion on (the globe turns), is remembered after a reload, and turns it off again;
+    - with no saved choice the motion prompt shows, and "Turn on animations" starts full motion and dismisses it. A device without the request never sees the prompt.
 12. With motion on:
     - Every revealed element settles at `transform: none`; every staggered tile ends visible; every counter ends on its exact value.
     - A `[data-lean]` tile leans toward the mouse and clears its transform when the mouse leaves.
     - The globe and roadmap turn when dragged.
+    - The projects gallery pins under the header and slides with the scroll; midway the counter reads 3 / 5; focusing a link in the last card centres that card; the "Procurement" step centres the fourth card and carries `aria-current="step"`.
+    - A whole card fits the pinned view at 1280×657, 1366×657, 1440×789 and 1536×730 (the gallery stays on there).
+    - The page holds 5 value-chain stages, 16 sector chips, 16 industries in 4 groups, and 3 results plus the "Modelled on synthetic data" line on every project.
     - A showcase frame leans at most 6° toward a mouse, spins at most 42° when dragged, and springs back after release.
     - At the end of Skills (wide screens), the yard has stacked all 8 containers and all 8 tool chips are marked; above Skills, none are.
     - At the end of Experience, the spine is full and all 4 roles are marked as reached.
@@ -68,6 +77,9 @@ Testing notes:
 - **SwiftShader notices.** Headless Chrome with SwiftShader logs "GPU stall due to ReadPixels" notices from its software compositor. The approved pre-3D site logs the same, so these are environmental and are not site console errors.
 - **Screenshots of WebGL.** In headless browsers, full-page screenshots of WebGL canvases are unreliable. Stitch viewport-sized captures instead, and compare canvases with viewport-clip captures.
 - **Proving a drag.** Test drags under reduced motion, where the scenes are still, so a changed canvas can only come from the drag.
+- **Comparing canvases.** Compositing can shift a few pixels by a level or two without anything moving, so "still" allows a largest change of 2 out of 255.
+- **Real GPU versus screenshots.** Headless Chrome on a real GPU can capture WebGL canvases blank. To prove a scene draws there, read the canvas's own pixels (create contexts with `preserveDrawingBuffer`) rather than trusting a screenshot.
+- **Software rendering is slow.** Under SwiftShader, smooth scrolls can stall for over a second and frames can back up. Set up scroll positions instantly, and wait for a quiet second before judging that render loops stopped.
 - **Unbreakable text in grids.** A grid track holding unbreakable text, such as a showcase address bar, must be `minmax(0, 1fr)`. A bare `1fr` grows to the text's width and scrolls the page sideways on phones.
 
 Static checks:
@@ -78,6 +90,9 @@ Static checks:
 - Every local file referenced exists.
 - `grep -ri "lovable\|made with\|lorem\|placeholder\|TODO"` finds nothing outside `assets/vendor`.
 - `grep -i "cgpa\|lucknow university\|university of lucknow\|physical education\|syed modi\|gbsn fellowship"` finds nothing in `index.html`.
-- Text stays minimal: about 1,000 visible words or fewer (it measured 1,029 in October 2026, down from 1,828).
+- Text stays minimal. Visible words measured:
+  - 1,029 after round 3 (down from 1,828);
+  - 1,143 after round 4, which added the Industries section (122 words) the owner asked for;
+  - 1,423 after round 5, which added each project's problem and results, the value chain and sixteen sectors, also at the owner's request.
 
 External links: open each one once. Some sites block automated checks, such as LinkedIn and wa.me. List those as "not verified" rather than passing them.

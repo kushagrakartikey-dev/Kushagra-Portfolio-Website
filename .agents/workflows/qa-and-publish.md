@@ -58,6 +58,7 @@ On the published URL:
 2. Click every external link once.
 3. Download the resume.
 4. Confirm the globe, the roadmap model and the container yard load, and that the three company logos show inside their tiles.
+5. On a device that asks for reduced motion, confirm the page starts gentle and the Animations switch turns full motion on.
 
 ## 5. Optional, after the URL is final
 

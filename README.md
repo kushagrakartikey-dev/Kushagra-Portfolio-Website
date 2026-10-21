@@ -2,7 +2,7 @@
 
 A single-page portfolio for Kushagra Kartikey, Supply Chain & Operations Professional (Delhi, India, open to relocation).
 
-It is plain HTML, CSS and JavaScript, in one dark theme, with results shown as graphics (gauges, before→after bars, unit dots) rather than paragraphs, and three interactive 3D scenes built in three.js:
+It is plain HTML, CSS and JavaScript, in a dark theme with a bright blue → cyan → emerald palette, Sora and Inter type, results shown as graphics (gauges, before→after bars, unit dots) rather than paragraphs, and three interactive 3D scenes built in three.js:
 - a globe of where the work has run;
 - a model of the coffee cooperative's capacity roadmap;
 - a container yard where a gantry crane stacks one container for each tool in the Skills list.
@@ -15,7 +15,7 @@ There is no build step, no framework, no package install and no external service
 kushagra-kartikey-portfolio-3d/
 ├── index.html                 Page content and structure
 ├── styles.css                 Design tokens, layout, components, motion
-├── script.js                  Menu, scroll effects, counters, project frames, the three 3D scenes
+├── script.js                  Menu, scroll effects, counters, projects gallery, Animations switch, the three 3D scenes
 ├── README.md                  This file
 └── assets/
     ├── documents/
@@ -25,8 +25,10 @@ kushagra-kartikey-portfolio-3d/
     ├── icons/
     │   └── favicon.svg        Browser tab icon
     ├── fonts/
-    │   ├── instrument-sans-latin.woff2   Instrument Sans, hosted locally
-    │   └── OFL.txt                       Font licence (SIL Open Font License)
+    │   ├── sora-latin.woff2      Sora (headings), hosted locally
+    │   ├── inter-latin.woff2     Inter (text), hosted locally
+    │   ├── OFL-Sora.txt          Sora licence (SIL Open Font License)
+    │   └── OFL-Inter.txt         Inter licence (SIL Open Font License)
     └── vendor/
         ├── three.min.js       three.js r160, hosted locally (powers the 3D scenes)
         └── three.LICENSE.txt  three.js licence (MIT)
@@ -105,7 +107,9 @@ Common updates:
 | A result in Experience | Its tile in `index.html`: the figure, its `data-count-to` value, and the graphic's class (for example `gauge--95` or `bar--r30`, defined near `.gauge` and `.bar` in `styles.css`) |
 | The roadmap model's figures | `ROADMAP` and the labels in `buildRoadmap` in `script.js`, and the figure caption in `index.html` (keep them identical) |
 | The tools in the container yard | `YARD_TOOLS` in `script.js`, and the Tools list and the yard caption in `index.html` (keep all three in the same order) |
-| A new project | Copy one `<li class="project">` block in `index.html`, change its text, links and address bar, and add its screenshot to `assets/images/` |
+| A new project | Follow `.agents/workflows/add-project-card.md`: copy one `<li class="project …">` block in `index.html`, then change its colour class, category, industry, problem line, three results (from its README, under "Modelled on synthetic data"), tags, links and address bar. Add its screenshot to `assets/images/`, a step under the gallery, and the new total in the counter ("/ 5") |
+| An industry | Its tile in the Industries section of `index.html` (in one of the four groups): name, icon and the evidence line (keep it true to your resume), plus its chip under "Sectors I can serve" in About |
+| What I work on | The five stages in About in `index.html`: capabilities, and the result with its `data-count-to` value (each result comes from Experience) |
 | A company logo | Replace the file in `assets/logos/` with the official one from the company's own website, keeping the same name |
 
 ## The 3D scenes
@@ -121,20 +125,24 @@ Common updates:
 - **Container yard** (Skills). A gantry crane lifts eight containers off a truck and stacks them, one for each tool: SAP, WMS, Excel, Power BI, Tableau, MySQL, Python and RPA. Each container carries its tool's name. On a computer the yard stays beside the lists and your scrolling drives the crane, and each tool in the list gains an amber marker as its container lands. On a phone the crane plays once when the yard comes into view. Drag it to turn it.
 
 Around the scenes, the page itself moves in depth:
-- **Hero:** the letters of your name stand up one by one, two of your live dashboards float behind the globe, and the three headline results rise with their bars and company logos.
-- **Headings and About:** headings rise word by word, and the About statement lights up word by word as you read.
+- **Hero:**
+  - a soft aurora of colour drifts behind the page;
+  - the letters of your name stand up one by one, with the last name in the gradient;
+  - two of your live dashboards float behind the glowing globe;
+  - the buttons drift slightly toward the mouse.
+- **Headings and About:** headings rise word by word, and the About statement lights up word by word as you read. Beside it, your work runs across the value chain (Plan, Source, Make, Deliver, Enable), each stage with one result that counts up, joined by a line that draws down; sixteen sector chips follow.
 - **Experience:** an amber line runs down the roles as you pass them. Each role shows its company logo, and its results arrive as tiles one after another: gauges sweep to their percentage, reduction bars shrink, dots appear one by one and every figure counts up.
-- **Projects:** each screenshot sits in a browser frame showing that project's live address. It straightens as it reaches the middle of the screen, leans toward the mouse, and can be spun with a drag before it springs back.
-- **Tiles everywhere** (results, strategy, education, certificates) lean slightly toward the mouse in 3D.
+- **Projects:** on a computer or a landscape iPad, the section pins in place and your scrolling slides the five projects sideways like a coverflow, each turning in 3D as it reaches the centre, with a counter (1 / 5), a step for each project that jumps to it, and a progress bar. Each project leads with its industry, the business problem it answers and three results in large figures, labelled as modelled on synthetic data. Each has its own colour and sits in a browser frame showing its live address. Frames lean toward the mouse and can be spun with a drag before they spring back. On phones the projects stack.
+- **Skills:** two rows of your skills and tools glide past in opposite directions above the container yard.
+- **Industries:** sixteen tiles in four colour-coded groups (consumer and retail, industrial and manufacturing, trade and logistics, services and sustainability), each naming the role, project or certificate behind it.
+- **Tiles everywhere** (results, strategy, industries, education, certificates) lean slightly toward the mouse in 3D, with a gradient edge and a soft light that follows the pointer.
 - **Header:** a thin amber line shows how far down the page you are.
 
-**Reduced motion.** If a visitor's device asks for reduced motion (on a Mac: System Settings → Accessibility → Display → Reduce motion), the site shows its still version:
-- all three 3D scenes appear in their final state with no animation;
-- every figure shows its final value, with no counting;
-- the project frames lie flat;
-- everything else is visible at once.
-
-The scenes can still be dragged. To see the full animation on your own computer, switch that setting off.
+**Animations switch and reduced motion.** The header has an **Animations** switch:
+- **On** is full motion.
+- **Off** is a gentle mode. Content still fades in, figures still count and gauges still fill, but nothing travels, turns or spins.
+- **Default:** if a device asks for reduced motion (on a Mac: System Settings → Accessibility → Display → Reduce motion; on an iPad: Settings → Accessibility → Motion), the site starts in the gentle mode. A small prompt at the foot of the screen then offers **Turn on animations** or **Keep calm**, and the answer is remembered on that device.
+- **Choice:** any visitor can switch, and the site remembers the choice on that device. Your Mac has Reduce Motion on, so switch Animations on once to see everything there.
 
 ## Troubleshooting
 
@@ -145,7 +153,7 @@ The scenes can still be dragged. To see the full animation on your own computer,
 | Page loads with no styling | `styles.css` is missing or renamed. Check it sits next to `index.html` with exactly that name. |
 | Resume button gives a 404 | `assets/documents/resume.pdf` is missing or named differently (names are case-sensitive). |
 | Images or a 3D scene missing | The `assets` folder was not uploaded in full. Re-upload it. |
-| The 3D scenes and headings do not move | The device has reduced motion switched on (see above). This is intended. |
+| Animations look reduced on a computer or iPad | The device asks for reduced motion, so the site starts gentle. Switch **Animations** on in the header (or in the Menu on smaller screens). |
 | Old version still showing | Hard refresh, or wait for the Actions run to finish. |
 | Plain font when opening `index.html` by double-clicking | Browsers block web fonts on `file://` pages. The site is fine on GitHub Pages. To preview locally with the real font, run `python -m http.server` in the folder and open `http://localhost:8000`. |
 
@@ -162,21 +170,21 @@ The scenes can still be dragged. To see the full animation on your own computer,
 
   The 3D canvases, icons, metric graphics and logo tiles are decorative: each sits beside text that carries the same information. Headings split into words or letters for animation keep a single readable copy for screen readers.
 - **Motion:**
-  - Everything that moves respects `prefers-reduced-motion`: the hero entrance, ledger bars, headings, result tiles and counters, word lighting, tile lean, project frames and all three 3D scenes.
+  - Motion has two modes: full, and a gentle mode that keeps fades, counts and fills but drops travel, turns, spin and parallax. A system request for reduced motion starts the gentle mode, and the Animations switch lets any visitor choose (WCAG 2.2.2: continuous movement can be stopped).
   - Content is never hidden if JavaScript fails. Reveal styles apply only after the script has started, and a failsafe shows anything already scrolled past.
   - Without WebGL or JavaScript, the 3D areas collapse and their captions remain as text.
 - **Performance:**
   - No external requests. Images are WebP with fixed dimensions; the project screenshots use `srcset` and lazy loading.
   - three.js loads only after the page has finished loading, once for all three scenes. The roadmap and the yard are built only as they approach the screen.
   - Each scene's render loop stops when it is off screen or the tab is hidden, and the pixel ratio is capped at 2.
-  - Every scroll-linked effect runs in one shared animation-frame loop.
+  - Every scroll-linked effect runs in one shared animation-frame loop, and continuous CSS animations pause while out of view.
 - **three.js:** the vendored `three.min.js` is the unmodified r160 build except for one line: its built-in "this build is deprecated" console notice is replaced with `void 0`, so visitors' consoles stay clean. The licence header is intact.
 - **Globe data:** land outlines come from a 1.5° land mask derived from the NOAA GLOBE dataset (via the `global-land-mask` package), embedded in `script.js`.
 - **Project screenshots** are captures of the published dashboards in each project repository. Those projects use synthetic data, as their own READMEs state, and the site says so.
 
 ## Credits
 
-- Typeface: Instrument Sans, SIL Open Font License (`assets/fonts/OFL.txt`).
+- Typefaces: Sora and Inter, SIL Open Font License (`assets/fonts/OFL-Sora.txt`, `assets/fonts/OFL-Inter.txt`), from the Fontsource packages.
 - 3D library: three.js, MIT License (`assets/vendor/three.LICENSE.txt`).
 - Land outline data: NOAA GLOBE dataset.
 - Company logos: DHL (Deutsche Post AG), Decathlon (Decathlon SE) and BWF (Badminton World Federation) are trademarks of their owners. Each file is the official logo as served on that organisation's own website, used unaltered to identify a past role.

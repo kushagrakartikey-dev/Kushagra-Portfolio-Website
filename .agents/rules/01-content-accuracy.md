@@ -16,6 +16,7 @@
   - unaltered, as served on the organisations' own websites (`assets/logos/`);
   - DHL's on DHL yellow, the others on white;
   - with a trademark line in the footer.
+- **No "store-level" (October 2026).** Never describe the work as store-level. Describe it as **retail operations and supply chain**.
 - **Minimal text (October 2026).** Keep only the important words, and show results as figures and graphics (gauges, before→after bars, reduction bars, unit dots) instead of prose.
 
 ## Accuracy rules
@@ -48,7 +49,7 @@
 - Quality and capex: post-harvest QA SOPs (**12.5%** moisture threshold); volume-gated **~USD 85K** capex case for in-house processing to capture a **$0.30/lb** origin premium.
 
 **Decathlon Sports India** — Department Manager. Lucknow, India. Dec 2023 – Oct 2025. Racquet and team sports. Exactly these seven results:
-- **95%+** stock availability (store-level stock targets and replenishment orders in the in-house WMS; clearing discounted stock before new intake)
+- **95%+** stock availability (stock targets and replenishment orders in the in-house WMS; clearing discounted stock before new intake)
 - Monthly targets met for **8+** consecutive months (100% planogram compliance)
 - **30%** reduction in inbound delays (cross-functional coordination with logistics)
 - **35%** reduction in omnichannel order errors (training teammates on the ordering platforms)
@@ -63,17 +64,32 @@
 
 **Earlier roles**: IIDE – The Digital School, Virtual Intern, Remote, Apr–May 2024 (campaign KPI tracking, search-demand research in Google Trends and SEMrush). HCLTech, Technical Support Executive, Madurai, Jun–Aug 2023 (multichannel client support, part-requirement predictions, troubleshooting guides).
 
-## Projects (each card: title, metric, problem, description, stack, repo link, live dashboard link)
+## Projects (each card: category, industry, title, problem and build, three results, stack, links)
 
-| Card | Metric | Repository | Live dashboard |
+Each repo is `github.com/kushagrakartikey-dev/<repo>`, and its live dashboard is `kushagrakartikey-dev.github.io/<repo>/`. The industry, problem and results come from the repo's README. Show the results only under the line **"Modelled on synthetic data"**, and preserve every figure exactly.
+
+| Card | Repo | Industry | Results |
 | --- | --- | --- | --- |
-| S&OP Intelligence System | 500 SKUs planned | github.com/kushagrakartikey-dev/Demand-Supply-Planning-S-OP-System | kushagrakartikey-dev.github.io/Demand-Supply-Planning-S-OP-System/ |
-| Strategic Sourcing Intelligence Engine | 280 suppliers, 28 categories | github.com/kushagrakartikey-dev/supply-chain-command-center | kushagrakartikey-dev.github.io/supply-chain-command-center/ |
-| Procurement Analytics | 11,963 purchase orders | github.com/kushagrakartikey-dev/procurement-analytics | kushagrakartikey-dev.github.io/procurement-analytics/ |
-| Lean Six Sigma Process Improvement Analyzer | Sigma level 3.78 → 4.04, modelled | github.com/kushagrakartikey-dev/Lean-Six-Sigma-Process-Improvement-Analyzer | kushagrakartikey-dev.github.io/Lean-Six-Sigma-Process-Improvement-Analyzer/ |
-| Inventory Optimization & Replenishment Engine | 500 SKUs, 2 DCs, 4 warehouses, 12 stores | github.com/kushagrakartikey-dev/inventory-optimization-engine | kushagrakartikey-dev.github.io/inventory-optimization-engine/ |
+| S&OP Intelligence System | Demand-Supply-Planning-S-OP-System | FMCG, retail, e-commerce and 3PL | WAPE 7.42% at sign-off; ₹5.70 Cr revenue at risk; 162 red-risk SKUs |
+| Inventory Optimization & Replenishment Engine | inventory-optimization-engine | Retail and distribution | ₹6.00 Cr working capital released; −73% stockout SKU-days; −28.5% safety stock, service held |
+| Strategic Sourcing Intelligence Engine | supply-chain-command-center | Automotive, Tier-1 components | ₹1,899 Cr spend analysed; ₹45.4 Cr expected savings a year; 4 of 28 categories at supply risk |
+| Procurement Analytics | procurement-analytics | Diversified manufacturing | ₹8.78 Cr policy leakage; 12.2% hidden cost above price; 13 of 15 supplier failures flagged early |
+| Lean Six Sigma Process Improvement Analyzer | Lean-Six-Sigma-Process-Improvement-Analyzer | Automotive and earthmoving parts | Sigma 3.78 → 4.04; 8.0-month payback; ₹1.94 Cr net benefit a year |
+
+Scale lives in the problem lines: 500 SKUs; 2 DCs, 4 warehouses, 12 stores; 280 suppliers; 11,963 purchase orders; 317,863 production records.
 
 All URLs start with `https://`. External links use `target="_blank" rel="noopener noreferrer"` plus visually hidden "(opens in a new tab)".
+
+## About: the value chain (owner's request, October 2026: "more" in What I work on and Sectors)
+
+Five stages, each with three capabilities and one result taken from Experience (keep its labels):
+- **Plan:** 95%+ stock availability (Decathlon).
+- **Source:** −15% vendor costs (BWF event).
+- **Make:** gross margin 21.2% → 40.5% (DHL).
+- **Deliver:** −30% inbound delays (Decathlon).
+- **Enable:** DSO 70 → 30 days, projected (DHL).
+
+Below them, under **"Sectors I can serve"**, sixteen chips name the Industries below in short form.
 
 ## Skills (two groups, exactly)
 
@@ -83,7 +99,32 @@ All URLs start with `https://`. External links use `target="_blank" rel="noopene
 
 ## Business strategy (four themes, each with "In my work" evidence)
 
-Cost strategy and sourcing; Working-capital improvement; Traceability and compliance; Volume-gated investment decisions. Then "Where it applies": Retail, Consumer goods, Agri-commodities and exports, Logistics, Sourcing and procurement. Separate general principles from demonstrated work, and mark recommendations and projections as such.
+Cost strategy and sourcing; Working-capital improvement; Traceability and compliance; Volume-gated investment decisions. Separate general principles from demonstrated work, and mark recommendations and projections as such.
+
+## Industries (owner's requests, October 2026: "cater all", then "more sectors")
+
+Sixteen industries in four groups, each with the evidence behind it. Never claim experience in an industry: name the role, project or certificate it comes from.
+
+- **Consumer and retail:**
+  - Retail and sporting goods: Department Manager at Decathlon.
+  - E-commerce and omnichannel: 10% month-over-month digital sales growth.
+  - FMCG and consumer goods: S&OP and inventory builds across 500 SKUs.
+  - Pharma and healthcare: OTC pharma lines in the inventory build.
+- **Industrial and manufacturing:**
+  - Manufacturing: Lean Six Sigma build; Six Sigma Black Belt.
+  - Automotive and auto components: sourcing, procurement and Six Sigma builds.
+  - Engineering and capital goods: Six Sigma build for earthmoving sub-assemblies.
+  - Aerospace and aviation: Airbus Supply Chain Specialist certificate.
+- **Trade and logistics:**
+  - Logistics, freight and 3PL: 3PL transport for 480+ participants.
+  - Warehousing and distribution: in-house WMS; 2 DCs and 4 warehouses modelled.
+  - International trade and exports: Incoterms and direct EU market access.
+  - Agri-commodities and food: coffee cooperative in Uganda.
+- **Services and sustainability:**
+  - Consulting and analytics: SME consulting with DHL; five live dashboards.
+  - Technology and IT services: part-requirement predictions at HCLTech.
+  - Events and hospitality: 450+ participants across 12 hotels.
+  - Sustainability and compliance: EUDR and HREDD framework, proposed.
 
 ## Education and credentials
 

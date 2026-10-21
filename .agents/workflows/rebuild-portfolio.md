@@ -16,7 +16,7 @@ Act as senior frontend engineer, UI/UX designer, accessibility specialist, perfo
 
 ## Phase 2 — Assets
 
-1. **Font.** Download Instrument Sans as a variable WOFF2 (latin subset, weight and width axes). The npm package `@fontsource-variable/instrument-sans` contains `files/instrument-sans-latin-standard-normal.woff2`. Save it as `assets/fonts/instrument-sans-latin.woff2` with its OFL licence beside it.
+1. **Fonts.** From the npm packages `@fontsource-variable/sora` and `@fontsource-variable/inter` (5.3.0), take `files/sora-latin-wght-normal.woff2` and `files/inter-latin-wght-normal.woff2`. Save them as `assets/fonts/sora-latin.woff2` and `inter-latin.woff2`, with each package's OFL licence as `OFL-Sora.txt` and `OFL-Inter.txt`.
 2. **three.js.** Get the r160 classic build from the npm package `three@0.160.0`, at `build/three.min.js`. Save it to `assets/vendor/three.min.js` with the MIT licence. Its first statement is a `console.warn('Scripts "build/three.js"…')` deprecation notice; replace that call (and only that call) with `void 0`. Keep the licence comment.
 3. **Land mask.** Run `pip install global-land-mask`. Load `globe_combined_mask_compressed.npz`, whose `mask` array is True for water, with row 0 at 90°N and column 0 at 180°W. Downsample it to 240×120 by block mean, treating a cell as land when its water fraction is below 0.35. Invert it so 1 means land, then `numpy.packbits` it row by row and base64 encode the result (about 4,800 characters). Paste the string into `script.js` as `LAND_MASK`.
 4. **Project screenshots.** Open each live dashboard at 1440×900, wait for the charts to render, and capture the first screen. Crop to 16:10 from the top-left. Save each as WebP at 1200 and 640 pixels wide, named `assets/images/project-<sop|sourcing|procurement|lean-six-sigma>-<width>.webp`. If the procurement dashboard does not load, use `docs/images/dashboard_compliance.png` from its repository instead.
@@ -38,20 +38,20 @@ Build the sections and ids in the order set by rule 02.
 
 **Copy to use:**
 - **Value statement:** "I run supply chain operations and measure every change by its result."
-- **About statement:** "Two years across store-level retail operations and international trade consulting, measured in stock availability, margin and cash."
+- **About statement:** "Two years across retail operations and supply chain, measured in stock availability, margin and cash."
 - **Contact invitation:** "Working on planning, sourcing, inventory or trade operations? I would like to hear about it."
 
 Write all other copy in plain, confident professional English, and as little of it as the facts allow (rule 01, minimal text): one line per role summary and per project, results as figures with short labels. Use no filler adjectives, and keep every sentence to facts from rule 01.
 
 ## Phase 4 — Build `styles.css`
 
-Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels), navigation and progress line, buttons, hero (globe, floating windows, ledger), about (focus tiles), experience (spine, metric tiles and their graphics, roadmap), projects showcase, skills and yard, strategy cards, education cards, contact, footer, motion, responsive, print. One dark theme: the page ground is `--navy-950`, tiles `--navy-900`.
+Order: font-face, tokens, base, layout helpers, shared parts (icons, logo tiles, chips, labels, tile light), navigation and progress line, buttons, hero (aurora, globe, floating windows, ledger), about (value chain, sector chips), experience (spine and head, metric tiles and their graphics, roadmap), projects gallery, skills (marquee, yard), strategy cards, industries, education cards, contact panel, footer, motion (two modes), responsive, print. The page ground is `--bg`, tiles `--surface`.
 
 Breakpoints:
-- 1100px: navigation collapses to the menu button;
+- 1200px: navigation collapses to the menu button;
 - 1024px: hero stacks; ledger, about and contact become one column; the yard moves between the Skills title and the lists, and stops being sticky;
 - 900px: project rows, themes and the role grid become one column;
-- 600px: full-width hero buttons, one-column skills, sectors and contact tiles; only one hero window.
+- 600px: full-width hero buttons, one-column skills, industry groups and contact tiles; value-chain results move under their stage; only one hero window.
 
 Any grid track that holds unbreakable text (the showcase address bar) is `minmax(0, 1fr)`, never a bare `1fr`.
 
@@ -63,18 +63,22 @@ Two anchor-offset rules:
 
 Write one IIFE in `'use strict'` mode. Wrap each module in `safely(name, fn)` so one failure never blocks the rest. Modules, in order:
 
+0. **motion** — before everything else (and in the head's inline script): set `<html data-motion>` to full or reduced, from the visitor's saved choice or the system setting.
 1. **header** — adds `.is-scrolled`.
 2. **menu** — as specified in rule 03.
 3. **scroll spy** — `aria-current="true"` on the nav link for the section in view.
 4. **split text** — splits the h2s and the footer name into words (letters for one-word headings), keeping a visually hidden full copy.
 5. **reveal** — IntersectionObserver plus the scroll-settle failsafe.
-6. **counters** — every `[data-count-to]` figure counts from its before value as it comes into view; skipped under reduced motion.
+6. **counters** — every `[data-count-to]` figure counts from its before value as it comes into view, in both modes, keeping thousands separators.
 7. **progress** — the header's reading-progress line.
 8. **word light** — lights the About statement word by word; skipped under reduced motion.
 9. **spine** — fills the timeline spine and marks each role as reached.
 10. **float windows** — the hero windows lean from a mouse pointer by depth.
 11. **showcase** — project frames straighten toward mid-screen, lean toward a mouse, spin when dragged and spring back.
-12. **lean** — `[data-lean]` tiles lean toward a mouse in 3D (fine pointers, motion allowed).
+12. **gallery** — pins the projects on wide screens with full motion and slides them as a coverflow; the steps jump to a card and focus centres one; if a card cannot fit the pinned view, the list stays.
+12a. **lean** — `[data-lean]` tiles lean toward a mouse in 3D and set the spotlight position (fine pointers, full motion).
+12b. **magnetic** — `[data-magnet]` buttons drift toward the pointer.
+12c. **motion toggle** and **idle animations** — the Animations switch; pausing off-screen CSS animations.
 13. **copy email** — shown only when the Clipboard API exists in a secure context; announces through a `role="status"` region.
 14. **year** — footer year.
 15. **globe** — as specified in rule 02.
